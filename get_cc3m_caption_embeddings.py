@@ -1,6 +1,6 @@
 # Creates and saves the embeddings of CC3M captions
 # Clip model used is ViT-B/32
-# Trancuate = True
+# Truncate = True
 # The numpy datatype is float64 which leads to an unnecessarily large save file.
 
 import pickle
