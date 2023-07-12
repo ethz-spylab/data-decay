@@ -32,12 +32,12 @@ print("img23_0 shape:",img23_0.shape)
 df_train
 
 # %%
-i=1940906
-j=1601006
+i=1940905
+j=1601005
 
 # %%
-ii = idx23_0.index(i+1)
-jj = idx23_0.index(j+1)
+ii = idx23_0.index(i+2)
+jj = idx23_0.index(j+2)
 
 # %%
 print(ii)
@@ -51,12 +51,7 @@ print("image comparison:", np.sum(img23_0[ii]!=img23_0[jj]))
 # images are not same, but very similar!
 
 # %%
-rows = open("cc3m.tsv").readlines()
-print(rows[i], rows[j])
-#Thats what was shared on spaces, but as we can see the captions do not match. Instead we need to go for i-1, j-1
-
-# %%
-rows = open("cc3m/cc3m_2023/Train_GCC-training.tsv").readlines()
+rows = open("/data/cc3m/cc3m_2023/Train_GCC-training.tsv").readlines()
 print(rows[i], rows[j])
 
 # %%
@@ -116,7 +111,7 @@ df_train['url'][x-2]
 # %%
 idx18_0 = pickle.load(open("/data/cc3m_embed/embed_cc3m_2018_b/order0.p","rb"))
 txt18_0 = pickle.load(open("/data/cc3m_embed/embed_cc3m_2018_b/txt0.p","rb"))
-img18_0 = pickle.load(open("../../data/cc3m_embed/embed_cc3m_2018_b/img0.p","rb"))
+img18_0 = pickle.load(open("/data/cc3m_embed/embed_cc3m_2018_b/img0.p","rb"))
 
 # %%
 idx18_1 = pickle.load(open("/data/cc3m_embed/embed_cc3m_2018_b/order1.p","rb"))
@@ -163,6 +158,21 @@ print("tot # of duplications: ", np.sum(count_idx18[count_idx18>1.1]))
 #some indexes are in 2023 data but not in 2018!
 missing_indexes = list(set(idx23) - set(idx18))
 len(missing_indexes)
+
+
+# %% 
+# 16% of 2018 data is missing in 2023 data
+decayed_indices = list(set(idx18) - set(idx23))
+len(decayed_indices)
+
+#%%
+decayed_indices.sort()
+print(decayed_indices[:20])
+# dump them to a file
+with open('decayed_indices_2018_to_2023.txt', 'w') as f:
+    for item in decayed_indices:
+        f.write("%s\n" % item)
+
 
 # %%
 x = 987
