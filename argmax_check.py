@@ -30,9 +30,15 @@ maxes = np.max(dot_products, axis=1)
 
 
 #%%
+DOT_PRODUCTS_B32 = EMBEDDINGS_FOLDER / "CC_vs_imagenet_B32.npy"  # (cc entries, imagenet classes)
+dot_products_b32 = np.load(DOT_PRODUCTS_B32)
+
+
+
+
+
+#%%
 # Make a curve of the number of entries that have the max imagenet similarity larger than x
-import matplotlib.pyplot as plt
-import seaborn as sns
 #sns.set()
 #sns.set_style("whitegrid")
 #sns.set_context("paper", font_scale=1.5)
@@ -46,6 +52,7 @@ import seaborn as sns
 #%%
 # New figure where we plot how many have the max product larger than x
 import matplotlib.pyplot as plt
+import seaborn as sns
 sns.set()
 sns.set_style("whitegrid")
 sns.set_context("paper", font_scale=1.5)
@@ -57,8 +64,6 @@ ys = [np.sum(maxes > x) / len(maxes) for x in xs]
 plt.plot(xs, ys)
 plt.savefig("max_product_with_imagenet_fraction.png", dpi=300, bbox_inches="tight")
 plt.show()
-
-
 
 
 
@@ -77,22 +82,23 @@ captions = cc_captions_df["caption"].tolist()
 print(captions[:100])
 
 #%%
-INTERESTING_CLASS = "chest"
+INTERESTING_CLASS = "weasel"
 # Find the id of that class
 class_id = None
 with open(IMAGENET_LABELS) as f:
     for i, line in enumerate(f):
-        if INTERESTING_CLASS in line:
+        if line.strip() == INTERESTING_CLASS:
             class_id = i
             break
 if class_id is None:
     raise ValueError(f"Class {INTERESTING_CLASS} not found in imagenet labels.")
 print(f"Class {INTERESTING_CLASS} has id {class_id}")
+print(f"Long label: {long_labels[class_id]}")
 
 # %%
 # Find the CC entries that have that class as argmax
 # and that have a max product larger than 0.5
-THRESHOLD = 0.5 
+THRESHOLD = 0.3 
 interesting_entries = set()
 for i, (entry, max_product) in enumerate(zip(argmax, maxes)):
     if entry == class_id and max_product > THRESHOLD:
@@ -102,13 +108,15 @@ print(f"Found {len(interesting_entries)} entries with class {INTERESTING_CLASS} 
 
 
 # %%
-# Get random 100 entries and their captions
+# Get random 100 entries, captions and dot products
 import random
 random.seed(42)
 random_entries = random.sample(list(interesting_entries), min(40, len(interesting_entries)))
 
+offset = 0.
+print("L14   B32   Caption")
 for entry in random_entries:
-    print(f"{entry}: {captions[entry]}")
+    print(f"{dot_products[entry, class_id]:.3f} {dot_products_b32[entry, class_id] - offset:.3f} {captions[entry]}")
 
 # %%
 
