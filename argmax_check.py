@@ -30,8 +30,8 @@ maxes = np.max(dot_products, axis=1)
 
 
 #%%
-DOT_PRODUCTS_B32 = EMBEDDINGS_FOLDER / "CC_vs_imagenet_B32.npy"  # (cc entries, imagenet classes)
-dot_products_b32 = np.load(DOT_PRODUCTS_B32)
+#DOT_PRODUCTS_B32 = EMBEDDINGS_FOLDER / "CC_vs_imagenet_B32.npy"  # (cc entries, imagenet classes)
+#dot_products_b32 = np.load(DOT_PRODUCTS_B32)
 
 
 
@@ -114,9 +114,10 @@ random.seed(42)
 random_entries = random.sample(list(interesting_entries), min(40, len(interesting_entries)))
 
 offset = 0.
-print("L14   B32   Caption")
+#print("L14   B32   Caption")
 for entry in random_entries:
-    print(f"{dot_products[entry, class_id]:.3f} {dot_products_b32[entry, class_id] - offset:.3f} {captions[entry]}")
+    #print(f"{dot_products[entry, class_id]:.3f} {dot_products_b32[entry, class_id] - offset:.3f} {captions[entry]}")
+    print(f"{dot_products[entry, class_id]:.3f} {captions[entry]} {urls[entry]}")
 
 # %%
 
