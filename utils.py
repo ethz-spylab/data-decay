@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 from pathlib import Path
 import random
+import torch
 
 #%%
 def get_relevant_captions(similarity: np.ndarray, 
@@ -74,9 +75,10 @@ def get_relevant_captions_from_embeddings(embeddings: np.ndarray,
     if distance_function == "dot_product":
         comparison = embeddings @ query
     elif distance_function == "euclidean":
-        diff = embeddings - query
-        distance = np.linalg.norm(diff, axis=1)
-        comparison = 1 - distance
+        emb_A = torch.from_numpy(query).to(torch.float32).to("cuda")
+        emb_B = torch.from_numpy(embeddings).to(torch.float32).to("cuda")
+        distances = torch.cdist(emb_A[None,:], emb_B).cpu().numpy()[0]
+        comparison = 1 - distances
     else:
         raise NotImplementedError("This distance method is not implemented yet.")
 
