@@ -2,7 +2,9 @@
 from pathlib import Path
 DATA_FOLDER = Path("/data/cc3m")
 EMBEDDINGS_FOLDER = DATA_FOLDER / "cc3m_2023/embeddings"
-CC_EMBEDDINGS_FOLDER = EMBEDDINGS_FOLDER / "text_embeddings.npy"
+IMAGENET_EMBEDDINGS_FOLDER = EMBEDDINGS_FOLDER / "imagenet_class_embeddings_L14.npy"
+CC_EMBEDDINGS_FOLDER = EMBEDDINGS_FOLDER / "text_embeddings_L14.npy"
+# CC_EMBEDDINGS_FOLDER = EMBEDDINGS_FOLDER / "text_embeddings.npy"
 CC_CAPTIONS_DF = "/data/cc3m/cc3m_2023/Train_GCC-training.tsv"
 CC_VS_IMAGENET = EMBEDDINGS_FOLDER / "CC_vs_imagenet_L14.npy"
 DECAYED_INDICES = DATA_FOLDER / "decayed_indices.txt"
@@ -21,6 +23,8 @@ DOT_PRODUCTS = EMBEDDINGS_FOLDER / "CC_vs_cluster_centers.npy"
 DISTANCES = EMBEDDINGS_FOLDER / "CC_vs_cluster_centers_distances.npy"
 
 IMAGENET_LABEL_COUNT = 1000
+
+from tqdm import tqdm
 
 # %%
 cluster_centers = np.load(CLUSTER_CENTERS)
@@ -184,7 +188,7 @@ relevant_labels, relevant_clusters = find_matching_labels_and_clusters(cluster_a
 
 
 
-
+#%%
 
 # AFTER THIS POINT IS NOT USED
 
@@ -639,4 +643,91 @@ a
 a = np.zeros(5)
 np.append(a, 1)
 
+# %%
+cc_vs_imagenet.shape
+# %%
+rewards = cc_vs_imagenet
+
+# %%
+def only_max_similarity_count(rewards):
+    return np.sum((rewards == rewards.max(axis=0, keepdims=1)).astype(float), axis=0)
+
+# %%
+imagenet_rewards =  only_max_similarity_count(rewards)
+# %%
+imagenet_rewards_missing = only_max_similarity_count(rewards[decayed_indices,:])
+# %%
+imagenet_rewards_missing
+# %%
+imagenet_rewards_missing_percentage = imagenet_rewards_missing / imagenet_rewards
+# %%
+imagenet_rewards_missing_percentage
+# %%
+np.max(imagenet_rewards_missing_percentage)
+# %%
+
+a = np.array([[1,9,3],[7,5,6]])
+a = np.array([1,9,3])
+b = (a == a.max(axis=0, keepdims=1)).astype(float)
+b
+
+
+# %%
+np.sum((rewards == rewards.max(axis=0, keepdims=1)).astype(float), axis=0)
+
+# %%
+def reward_function(reward_row):
+    return (reward_row == reward_row.max(keepdims=1))
+# %%
+imagenet_rewards = rewards
+for i in tqdm(range(rewards.shape[0])):
+    imagenet_rewards[i,:] = reward_function(rewards[i,:])
+
+
+# %%
+rewards.shape[0]
+# %%
+imagenet_rewards.shape
+# %%
+np.sum(np.sum(imagenet_rewards, axis=1) == 1)
+
+# %%
+k = np.where(np.sum(imagenet_rewards, axis=1) != 1)
+# %%
+k
+# %%
+imagenet_rewards[k[0]]
+# %%
+np.where(imagenet_rewards[k[0]] != 0)
+# %%
+poss = np.column_stack(np.where(imagenet_rewards[k[0]] != 0))
+rows = poss[:,0]
+cols = poss[:,1]
+# %%
+rows
+# %%
+np.sum((rewards[rows[0]] == rewards[rows[0]].max(keepdims=1)))
+# %%
+print(rewards[rows[0], cols[0]])
+print(rewards[rows[1], cols[1]])
+# %%
+np.sum(np.isnan(rewards))
+# %%
+(rewards[rows[0]] == rewards[rows[0]].max(keepdims=1))
+# %%
+rewards
+# %%
+cc_vs_imagenet
+# %%
+a = np.array([1,2,3])
+b = a
+b[0] = 5
+# %%
+a
+# %%
+a = np.array([1,2,3])
+b = np.copy(a)
+b[0] = 5
+# %%
+a
 # %%

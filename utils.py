@@ -359,7 +359,7 @@ def plot_imagenet_make_up(distribution_to_clusters : np.ndarray,
             np.append(decayed_distribution_to_clusters[top_indices], 
                               np.sum(decayed_distribution_to_clusters) - np.sum(decayed_distribution_to_clusters[top_indices])), 
             color='orange')
-    plt.title('Distribution of imagenet label ' + imagenet_label_id + ' in the clusters')
+    plt.title('Distribution of imagenet label ' + imagenet_label_id + ' to the clusters')
     plt.legend(['All', 'Decayed'])
     plt.show()    
 
@@ -392,8 +392,8 @@ def find_matching_labels_and_clusters(cluster_assignment: np.ndarray,
     
     imagenet_cluster_counts, decayed_imagenet_cluster_counts = get_imagenet_cluster_counts_and_decayed(cluster_assignment, imagenet_assignment, decayed_indices)
 
-    distribution_of_imagenet_labels_to_clusters = get_distribution_of_imagenet_labels_to_clusters(imagenet_cluster_counts)
-    percentages_of_imagenet_labels_in_clusters = get_distribution_of_imagenet_labels_to_clusters(imagenet_cluster_counts.T)
+    distribution_of_imagenet_labels_to_clusters = imagenet_cluster_counts / np.sum(imagenet_cluster_counts, axis=1, keepdims=True)
+    percentages_of_imagenet_labels_in_clusters = imagenet_cluster_counts / np.sum(imagenet_cluster_counts, axis=0, keepdims=True)
 
     im_element_count = np.sum(imagenet_cluster_counts, axis=1)
     cl_element_count = np.sum(imagenet_cluster_counts, axis=0)
@@ -406,7 +406,7 @@ def find_matching_labels_and_clusters(cluster_assignment: np.ndarray,
     relevant_clusters = []
 
     for row,col in zip(rows, cols):
-        if (im_element_count[row] >= imagenet_element_count_threshold) & (percentages_of_imagenet_labels_in_clusters[col, row] >= cluster_percentage_in_imagenet_threshold):
+        if (im_element_count[row] >= imagenet_element_count_threshold) & (percentages_of_imagenet_labels_in_clusters[row, col] >= cluster_percentage_in_imagenet_threshold):
             relevant_labels.append(row)
             relevant_clusters.append(col)
 
@@ -421,6 +421,6 @@ def find_matching_labels_and_clusters(cluster_assignment: np.ndarray,
                   " label percentage in cluster: ", distribution_of_imagenet_labels_to_clusters[relevant_labels[i],relevant_clusters[i]])
             print("cluster in label: ", imagenet_cluster_counts[relevant_labels[i],relevant_clusters[i]],
                   " total cluster: ", cl_element_count[relevant_clusters[i]],
-                  " cluster percentage in label: ", percentages_of_imagenet_labels_in_clusters[relevant_clusters[i],relevant_labels[i]])
+                  " cluster percentage in label: ", percentages_of_imagenet_labels_in_clusters[relevant_labels[i],relevant_clusters[i]])
     
     return relevant_labels, relevant_clusters
