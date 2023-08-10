@@ -2,7 +2,8 @@
 from pathlib import Path
 DATA_FOLDER = Path("/data/cc3m")
 EMBEDDINGS_FOLDER = DATA_FOLDER / "cc3m_2023/embeddings"
-CC_EMBEDDINGS_FOLDER = EMBEDDINGS_FOLDER / "text_embeddings.npy"
+CC_EMBEDDINGS_FOLDER = EMBEDDINGS_FOLDER / "text_embeddings_L14.npy"
+#CC_EMBEDDINGS_FOLDER = EMBEDDINGS_FOLDER / "text_embeddings.npy"
 CC_CAPTIONS_DF = "/data/cc3m/cc3m_2023/Train_GCC-training.tsv"
 
 #%%
@@ -34,6 +35,7 @@ torch.cuda.is_available()
 cc_embeddings = np.load(CC_EMBEDDINGS_FOLDER)
 
 #%%
+CLUSTER_CENTERS = EMBEDDINGS_FOLDER / "cluster_centers_L14.npy" # can also be just "cluster_centers.npy"
 if args.recompute_kmeans:
     N_CLUSTERS = 100
     kmeans_fitter =  MiniBatchKMeans(n_clusters=N_CLUSTERS, batch_size=256 * 16, verbose=1, n_init=5, max_iter=500, random_state=0)
@@ -42,12 +44,10 @@ if args.recompute_kmeans:
 
     print("Saving k-means")
     # Save the cluster centers
-    CLUSTER_CENTERS = EMBEDDINGS_FOLDER / "cluster_centers.npy"
     np.save(CLUSTER_CENTERS, kmeans.cluster_centers_)
     cluster_centers = kmeans.cluster_centers_
 else:
     # Load the cluster centers
-    CLUSTER_CENTERS = EMBEDDINGS_FOLDER / "cluster_centers.npy"
     cluster_centers = np.load(CLUSTER_CENTERS)
 
 print("Dot products")
