@@ -18,26 +18,43 @@ from utils import (plot_missing_num_perc, get_relevant_captions, get_cluster_mak
     plot_imagenet_make_up, find_matching_labels_and_clusters)
 import pickle
 import torch
-CLUSTER_CENTERS = EMBEDDINGS_FOLDER / "cluster_centers.npy"
-DOT_PRODUCTS = EMBEDDINGS_FOLDER / "CC_vs_cluster_centers.npy"
-DISTANCES = EMBEDDINGS_FOLDER / "CC_vs_cluster_centers_distances.npy"
+CLUSTER_CENTERS = EMBEDDINGS_FOLDER / "cluster_centers_L14.npy"
+DOT_PRODUCTS = EMBEDDINGS_FOLDER / "CC_vs_cluster_centers_L14.npy"
+DISTANCES = EMBEDDINGS_FOLDER / "CC_vs_cluster_centers_distances_L14.npy"
 
 IMAGENET_LABEL_COUNT = 1000
 
 from tqdm import tqdm
+
+IMAGENET_CLASSES_SHORT = DATA_FOLDER / "imagenet_classes.txt"
+IMAGENET_CLASSES_LONG = DATA_FOLDER / "imagenet_classes_long.txt"
+
+
+# %%
+#TODO: read IMAGENET_CLASSES_SHORT and save it to a list
+imagenet_classes_short = []
+with open(IMAGENET_CLASSES_SHORT, "r") as f:
+    for line in f:
+        imagenet_classes_short.append(line.strip())
+
+imagenet_classes_long = []
+with open(IMAGENET_CLASSES_LONG, "r") as f:
+    for line in f:
+        imagenet_classes_long.append(line.strip())
+
 
 # %%
 cluster_centers = np.load(CLUSTER_CENTERS)
 dot_products = np.load(DOT_PRODUCTS)
 distances = np.load(DISTANCES)
 
+
 # %%
 # TODO: check if dot products make sense
-get_relevant_captions(dot_products, 63, only_argmax=True, sort_best=False)
+get_relevant_captions(dot_products, 29, only_argmax=True, sort_best=False)
 
 # %%
 cluster_assignment = np.argmax(dot_products, axis=1)
-print(cluster_assignment.shape)
 
 # %%
 number_of_clusters = dot_products.shape[1]
@@ -102,11 +119,6 @@ highest_percentage_clusters = get_top_n_indices(percentage_of_decayed_indices_in
 print(highest_percentage_clusters)
 print(percentage_of_decayed_indices_in_clusters[highest_percentage_clusters])
 
-# %%
-# TODO: Plot the highest_percentage_clusters and their percentages, and the number of decayed indices in them in the same plot
-plt.bar([str(x) for x in highest_percentage_clusters], percentage_of_decayed_indices_in_clusters[highest_percentage_clusters])
-plt.title('Clusters with highest percentage of missing')
-plt.show()
 
 # %%
 
@@ -135,14 +147,6 @@ cc_vs_imagenet.shape
 imagenet_assignment = np.argmax(cc_vs_imagenet, axis=1)
 imagenet_assignment.shape
 
-# %%
-
-decayed_array = np.ones(imagenet_assignment.shape[0], dtype=int)
-decayed_array[decayed_indices] = 0
-
-print(type(decayed_array))
-print(type(decayed_indices))
-
 
 # %%
 # TODO: find how many elements are there in each imagenet assignment
@@ -157,13 +161,13 @@ print("Number of imagenet_element_counts with 0 elements: ", np.count_nonzero(im
 
 #%%
 
-plot_cluster_make_up(30, cluster_assignment, imagenet_assignment, decayed_indices, order="number")
-plot_cluster_make_up(30, cluster_assignment, imagenet_assignment, decayed_indices, order="percentage")
+#plot_cluster_make_up(30, cluster_assignment, imagenet_assignment, decayed_indices, order="number")
+#plot_cluster_make_up(30, cluster_assignment, imagenet_assignment, decayed_indices, order="percentage")
 
 # %%
 
-plot_cluster_make_up(29, cluster_assignment, imagenet_assignment, decayed_indices, order="number")
-plot_cluster_make_up(29, cluster_assignment, imagenet_assignment, decayed_indices, order="percentage")
+#plot_cluster_make_up(29, cluster_assignment, imagenet_assignment, decayed_indices, order="number")
+#plot_cluster_make_up(29, cluster_assignment, imagenet_assignment, decayed_indices, order="percentage")
 
 # %%
 # TODO: find cluster to caption assignment and print the caption for each cluster
@@ -177,7 +181,13 @@ for i in range(number_of_clusters):
     
 # %%
 
-relevant_labels, relevant_clusters = find_matching_labels_and_clusters(cluster_assignment, imagenet_assignment, decayed_indices)
+relevant_labels, relevant_clusters = find_matching_labels_and_clusters(cluster_assignment,
+                                         imagenet_assignment, decayed_indices,
+                                         imagenet_classes_short, imagenet_classes_long,
+                                         imagenet_element_count_threshold  = 1000,
+                                         imagenet_percentage_in_cluster_threshold  = 0.5,
+                                         cluster_percentage_in_imagenet_threshold  = 0.4,)
+
 
 
 
@@ -191,6 +201,56 @@ relevant_labels, relevant_clusters = find_matching_labels_and_clusters(cluster_a
 #%%
 
 # AFTER THIS POINT IS NOT USED
+
+
+
+
+
+
+# %%
+
+[imagenet_classes_short[x]+" ("+str(x)+")" for x in relevant_labels]
+print("label: (" + str(relevant_labels[0]) + ") " + imagenet_classes_short[relevant_labels[0]])
+
+#%%
+
+relevant_labels
+
+# %%
+#TODO: read IMAGENET_CLASSES_SHORT and save it to a list
+imagenet_classes_short = []
+with open(IMAGENET_CLASSES_SHORT, "r") as f:
+    for line in f:
+        imagenet_classes_short.append(line.strip())
+
+imagenet_classes_short = np.array(imagenet_classes_short)
+
+imagenet_classes_long = []
+with open(IMAGENET_CLASSES_LONG, "r") as f:
+    for line in f:
+        imagenet_classes_long.append(line.strip())
+
+imagenet_classes_long = np.array(imagenet_classes_long)
+
+#%%
+
+imagenet_classes_long[relevant_labels][0]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

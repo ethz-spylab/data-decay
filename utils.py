@@ -197,6 +197,7 @@ def plot_cluster_make_up(cluster_number: int,
                          cluster_assignment: np.ndarray, 
                          imagenet_assignment: np.ndarray, 
                          decayed_indices: list,
+                         imagenet_labels: list = [],
                          log_scale: bool = True,
                          x_label: str = 'Imagenet Labels',
                          y1_label: str = '#',
@@ -237,10 +238,14 @@ def plot_cluster_make_up(cluster_number: int,
         ax1.set_yscale('log')
         y1_label = y1_label + ' (log scale)'
     plt.xticks(rotation = 45)
-    ax1.bar([str(x) for x in indices],
+    if len(imagenet_labels) > 0:
+        labels = [imagenet_labels[i]+" ("+str(i)+")" for i in indices]
+    else:
+        labels = [str(i) for i in indices]
+    ax1.bar(labels,
             cluster_imagenet_element_counts[indices],
             color='g')
-    ax1.bar([str(x) for x in indices],
+    ax1.bar(labels,
             cluster_decayed_imagenet_element_counts[indices],
             color='orange')
     
@@ -253,7 +258,7 @@ def plot_cluster_make_up(cluster_number: int,
     ax1.legend(['All', 'Decayed'])
 
     ax2 = plt.twinx()
-    ax2.plot([str(x) for x in indices],
+    ax2.plot(labels,
             imagenet_cluster_percentages[indices],
             color='b', marker='*')
     ax2.set_ylabel(y2_label)
@@ -337,6 +342,7 @@ def get_imagenet_cluster_counts_and_decayed(cluster_assignment: np.ndarray,
 def plot_imagenet_make_up(distribution_to_clusters : np.ndarray,
                           decayed_distribution_to_clusters : np.ndarray,
                           imagenet_label_id : str = "",
+                          imagenet_label_name : str = "",
                           n_plot : int = 10):
     
     """Plot the distribution of imagenet labels in the clusters.
@@ -351,6 +357,7 @@ def plot_imagenet_make_up(distribution_to_clusters : np.ndarray,
     X_axis = [str(x) for x in top_indices]
     X_axis.append('Rest')
 
+    plt.xticks(rotation = 45)
     plt.bar(X_axis, 
             np.append(distribution_to_clusters[top_indices], 
                               np.sum(distribution_to_clusters) - np.sum(distribution_to_clusters[top_indices])), 
@@ -359,7 +366,8 @@ def plot_imagenet_make_up(distribution_to_clusters : np.ndarray,
             np.append(decayed_distribution_to_clusters[top_indices], 
                               np.sum(decayed_distribution_to_clusters) - np.sum(decayed_distribution_to_clusters[top_indices])), 
             color='orange')
-    plt.title('Distribution of imagenet label ' + imagenet_label_id + ' to the clusters')
+    plt.title('Distribution of imagenet label ' + imagenet_label_id +"-" + 
+              imagenet_label_name+ ' to the clusters')
     plt.legend(['All', 'Decayed'])
     plt.show()    
 
@@ -369,6 +377,8 @@ def plot_imagenet_make_up(distribution_to_clusters : np.ndarray,
 def find_matching_labels_and_clusters(cluster_assignment: np.ndarray, 
                                       imagenet_assignment: np.ndarray,
                                       decayed_indices: list,
+                                      imagenet_labels_short = 'list',
+                                      imagenet_labels_long = 'list',
                                       imagenet_element_count_threshold : int = 1000,
                                       imagenet_percentage_in_cluster_threshold : float = 0.5,
                                       cluster_percentage_in_imagenet_threshold : float = 0.4,
@@ -396,7 +406,9 @@ def find_matching_labels_and_clusters(cluster_assignment: np.ndarray,
     percentages_of_imagenet_labels_in_clusters = imagenet_cluster_counts / np.sum(imagenet_cluster_counts, axis=0, keepdims=True)
 
     im_element_count = np.sum(imagenet_cluster_counts, axis=1)
+    decayed_im_element_count = np.sum(decayed_imagenet_cluster_counts, axis=1)
     cl_element_count = np.sum(imagenet_cluster_counts, axis=0)
+    decayed_cl_element_count = np.sum(decayed_imagenet_cluster_counts, axis=0)
 
     poss = np.column_stack(np.where(distribution_of_imagenet_labels_to_clusters > imagenet_percentage_in_cluster_threshold))
     rows = poss[:,0]
@@ -412,15 +424,29 @@ def find_matching_labels_and_clusters(cluster_assignment: np.ndarray,
 
     for i in range(len(relevant_clusters)):
         if plot:
-            plot_cluster_make_up(relevant_clusters[i], cluster_assignment, imagenet_assignment, decayed_indices, order="number")
-            plot_imagenet_make_up(imagenet_cluster_counts[relevant_labels[i],:], decayed_imagenet_cluster_counts[relevant_labels[i],:], str(relevant_labels[i]))
+            plot_cluster_make_up(relevant_clusters[i], cluster_assignment, 
+                                 imagenet_assignment, decayed_indices, 
+                                 imagenet_labels_short, order="number")
+            plot_imagenet_make_up(imagenet_cluster_counts[relevant_labels[i],:], 
+                                  decayed_imagenet_cluster_counts[relevant_labels[i],:], 
+                                  str(relevant_labels[i]),
+                                  imagenet_labels_short[relevant_labels[i]])
         if summary:
-            print("label: ", relevant_labels[i], " cluster: ", relevant_clusters[i])
-            print("label in cluster: ", imagenet_cluster_counts[relevant_labels[i],relevant_clusters[i]],
-                  " total label: ", im_element_count[relevant_labels[i]],
-                  " label percentage in cluster: ", distribution_of_imagenet_labels_to_clusters[relevant_labels[i],relevant_clusters[i]])
+            print("label: (" + str(relevant_labels[i]) + ") " + 
+                  imagenet_labels_long[relevant_labels[i]] + 
+                  ", cluster: " + str(relevant_clusters[i]))
             print("cluster in label: ", imagenet_cluster_counts[relevant_labels[i],relevant_clusters[i]],
-                  " total cluster: ", cl_element_count[relevant_clusters[i]],
-                  " cluster percentage in label: ", percentages_of_imagenet_labels_in_clusters[relevant_labels[i],relevant_clusters[i]])
+                  ", total cluster: ", cl_element_count[relevant_clusters[i]],
+                  ", cluster percentage in label: ", percentages_of_imagenet_labels_in_clusters[relevant_labels[i],relevant_clusters[i]])            
+            print("label in cluster: ", imagenet_cluster_counts[relevant_labels[i],relevant_clusters[i]],
+                  ", total label: ", im_element_count[relevant_labels[i]],
+                  ", label percentage in cluster: ", distribution_of_imagenet_labels_to_clusters[relevant_labels[i],relevant_clusters[i]])
+            #print("decay rate of label in cluster: ", decayed_imagenet_cluster_counts[relevant_labels[i],relevant_clusters[i]]/imagenet_cluster_counts[relevant_labels[i],relevant_clusters[i]],
+            #      ", decay rate of label in dataset: ", decayed_im_element_count[relevant_labels[i]]/im_element_count[relevant_labels[i]],
+            #      ", decay rate of cluster in dataset: ", decayed_cl_element_count[relevant_clusters[i]]/cl_element_count[relevant_clusters[i]])
+            print(f'decay rate of label in cluster: {decayed_imagenet_cluster_counts[relevant_labels[i],relevant_clusters[i]]/imagenet_cluster_counts[relevant_labels[i],relevant_clusters[i]]:.3f}, \
+decay rate of label in dataset: {decayed_im_element_count[relevant_labels[i]]/im_element_count[relevant_labels[i]]:.3f}, \
+decay rate of cluster in dataset: {decayed_cl_element_count[relevant_clusters[i]]/cl_element_count[relevant_clusters[i]]:.3f}')
+                  
     
     return relevant_labels, relevant_clusters
