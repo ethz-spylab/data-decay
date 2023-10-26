@@ -129,7 +129,6 @@ class DataloaderWrapper:
         self.dataloader = dataloader
 data = {
     'imagenet-val': DataloaderWrapper(imagenet_test_dataloader),
-    'imagenet-v2': DataloaderWrapper(imagenet_train_dataloader),
 }
 
 #%%
@@ -158,6 +157,8 @@ tokenizer = open_clip.get_tokenizer('RN50')
 results_10 = zero_shot_eval(model_10, data, args)
 
 # %%
+results_10
+#%%
 
 
 model_11, _, preprocess_11 = open_clip.create_model_and_transforms(
@@ -165,3 +166,4 @@ model_11, _, preprocess_11 = open_clip.create_model_and_transforms(
     pretrained=str(RUN11), device=device)
 
 results_11 = zero_shot_eval(model_11, data, epoch, args, tokenizer)
+# %%
