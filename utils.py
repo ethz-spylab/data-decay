@@ -4,6 +4,11 @@ from pathlib import Path
 import random
 import torch
 import matplotlib.pyplot as plt
+import matplotlib.patches as mpatches
+import sys
+import numpy as np
+import numpy.lib.format
+import struct
 IMAGENET_LABEL_COUNT = 1000
 
 #%%
@@ -19,11 +24,12 @@ def get_top_n_indices(array : np.ndarray, n: int = 10):
     return np.argsort(array)[::-1][:n]
 
 #%%
-def get_relevant_captions(similarity: np.ndarray, 
+def get_relevant_captions_and_urls(similarity: np.ndarray, 
                           col_id : int, 
                           n_relevant = 10,
                           only_argmax = False,
-                          sort_best = False, 
+                          sort_best = False,
+                          seed: int = 42,
                           CAPTIONS_FILE = "/data/cc3m/cc3m_2023/Train_GCC-training.tsv"):
     """
     Get the relevant captions for a given column of the dot products matrix.
@@ -43,7 +49,9 @@ def get_relevant_captions(similarity: np.ndarray,
 
     # TODO take a look at argmax_check.py file for inspiration
     
-    captions = pd.read_csv(CAPTIONS_FILE, sep='\t', names=["caption","url"], usecols=range(0,2))["caption"].tolist()
+    cc = pd.read_csv(CAPTIONS_FILE, sep='\t', names=["caption","url"], usecols=range(0,2))
+    captions = cc["caption"].tolist()
+    urls = cc["url"].tolist()
     assert similarity.shape[0] == len(captions), "Similarity matrix and captions length do not match!"
     assert similarity.shape[1] - 1 >= abs(col_id), "col_id exceeds the # columns in similarity matrix!"
     similarity_relevant = similarity[:,col_id]
@@ -51,17 +59,46 @@ def get_relevant_captions(similarity: np.ndarray,
         argmax = np.argmax(similarity, axis=1)
         similarity_relevant = similarity_relevant[argmax==col_id]
         captions = [captions[i] for i in np.where(argmax==col_id)[0]]
+        urls = [urls[i] for i in np.where(argmax==col_id)[0]]
                               
     n_relevant_available = min(n_relevant, len(similarity_relevant))
+    random.seed(seed)
                               
     if sort_best != True:
         random_entries = random.sample(range(len(similarity_relevant)), n_relevant_available)
-        return [captions[entry] for entry in random_entries]
+        return [captions[entry] for entry in random_entries], [urls[entry] for entry in random_entries]
     else:
         idx = np.argpartition(similarity_relevant, -n_relevant_available)[-n_relevant_available:]
         idx_sorted = idx[np.argsort(similarity_relevant[idx])][::-1]
-        return [captions[entry] for entry in idx_sorted]
+        return [captions[entry] for entry in idx_sorted], [urls[entry] for entry in idx_sorted]
     
+
+# %%
+
+def get_label_cluster_matching_captions_urls(imagenet_assignment: np.ndarray,
+                                             cluster_assignment: np.ndarray,
+                                             relevant_labels: int,
+                                             relevant_clusters: int,
+                                             n_samples: int = 10,
+                                             seed: int = 42,
+                                             CAPTIONS_FILE = "/data/cc3m/cc3m_2023/Train_GCC-training.tsv"):
+    """
+    Returns the captions and urls of the given number of samples from the given label and cluster.
+    """
+    cc_captions = pd.read_csv(CAPTIONS_FILE, sep="\t", header=None)
+    cc_captions.columns = ["caption", "url"]
+    captions = np.array(cc_captions["caption"])
+    url = np.array(cc_captions["url"])
+
+    label_cluster_cap = captions[(cluster_assignment == relevant_clusters) & (imagenet_assignment == relevant_labels)]
+    label_cluster_url = url[(cluster_assignment == relevant_clusters) & (imagenet_assignment == relevant_labels)]
+
+    n_samples_available = min(n_samples, len(label_cluster_cap))
+
+    random.seed(seed)
+    random_entries = random.sample(range(len(label_cluster_cap)), n_samples_available)
+
+    return label_cluster_cap[random_entries], label_cluster_url[random_entries]
 
 
 #%%
@@ -97,7 +134,7 @@ def get_relevant_captions_from_embeddings(embeddings: np.ndarray,
         raise NotImplementedError("This distance method is not implemented.")
 
     # TODO call get_relevant_captions with col_id = 0
-    return get_relevant_captions(similarity = comparison[:,None], 
+    return get_relevant_captions_and_urls(similarity = comparison[:,None], 
                           col_id = 0, 
                           n_relevant = n_relevant,
                           sort_best = sort_best, 
@@ -107,7 +144,7 @@ def get_relevant_captions_from_embeddings(embeddings: np.ndarray,
 # TODO: create a function that generates number of missing bar plot and percentage of missing line plot for a given cluster
 
 def plot_missing_num_perc(indices:np.ndarray, numbers: np.ndarray, percentages: np.ndarray, title="Plot", log_scale=True, x_label='class',
-                y1_label='# of missing', y2_label='percentage of missing'):
+                y1_label='# of missing', y2_label='percentage of missing', labels=[]):
     """Plots the number of missing and percentage of missing for a given cluster.
     
     Args:
@@ -123,17 +160,31 @@ def plot_missing_num_perc(indices:np.ndarray, numbers: np.ndarray, percentages: 
     if log_scale:
         ax1.set_yscale('log')
     plt.xticks(rotation = 45)
-    ax1.bar([str(x) for x in indices],
-            numbers[indices],
-           color='g')
+    if len(labels) == 0:
+        ax1.bar([str(x) for x in indices],
+                numbers[indices],
+            color='g')
+    elif len(labels) == len(indices):
+        ax1.bar(labels,
+                numbers[indices],
+            color='g')
+    else:
+        raise ValueError("labels must be empty or same size as indices")
     ax1.set_ylabel(y1_label)
     ax1.set_xlabel(x_label)
     ax1.set_title(title)
 
     ax2 = plt.twinx()
-    ax2.plot([str(x) for x in indices], 
+    if len(labels) == 0:
+        ax2.plot([str(x) for x in indices], 
             percentages[indices],
             color='b', marker='*')
+    elif len(labels) == len(indices):
+        ax2.plot(labels, 
+            percentages[indices],
+            color='b', marker='*')
+    else:
+        raise ValueError("labels must be empty or same size as indices")
     ax2.set_ylabel(y2_label)
     
     return fig
@@ -144,7 +195,8 @@ def get_cluster_make_up(cluster_number: int,
                         cluster_assignment: np.ndarray, 
                         imagenet_assignment: np.ndarray, 
                         decayed_indices: list,
-                        with_nan = False):
+                        with_nan = False,
+                        label_count = IMAGENET_LABEL_COUNT):
     """
     Returns the make up of a cluster in terms of imagenet assignments and the number of decayed elements in each assignment
         and the percentage of each imagenet label assignments in the cluster.
@@ -166,22 +218,22 @@ def get_cluster_make_up(cluster_number: int,
         """
     cluster_indices = np.where(cluster_assignment == cluster_number)[0]
     cluster_imagenet_assignment = imagenet_assignment[cluster_indices]
-    cluster_imagenet_element_counts = np.zeros(IMAGENET_LABEL_COUNT, dtype=int)
-    for i in range(IMAGENET_LABEL_COUNT):
+    cluster_imagenet_element_counts = np.zeros(label_count, dtype=int)
+    for i in range(label_count):
         cluster_imagenet_element_counts[i] = np.count_nonzero(cluster_imagenet_assignment == i)
 
-    decayed_array = np.ones(imagenet_assignment.shape[0], dtype=int)
-    decayed_array[decayed_indices] = 0
+    decayed_array = np.zeros(imagenet_assignment.shape[0], dtype=int)
+    decayed_array[decayed_indices] = 1
 
-    cluster_decayed_indices = np.where((cluster_assignment == cluster_number) & (decayed_array == 0))[0]
+    cluster_decayed_indices = np.where((cluster_assignment == cluster_number) & (decayed_array == 1))[0]
     cluster_decayed_imagenet_assignment = imagenet_assignment[cluster_decayed_indices]
-    cluster_decayed_imagenet_element_counts = np.zeros(IMAGENET_LABEL_COUNT, dtype=int)
+    cluster_decayed_imagenet_element_counts = np.zeros(label_count, dtype=int)
 
-    for i in range(IMAGENET_LABEL_COUNT):
+    for i in range(label_count):
         cluster_decayed_imagenet_element_counts[i] = np.count_nonzero(cluster_decayed_imagenet_assignment == i)
 
-    imagenet_element_counts = np.zeros(IMAGENET_LABEL_COUNT, dtype=int)
-    for i in range(IMAGENET_LABEL_COUNT):
+    imagenet_element_counts = np.zeros(label_count, dtype=int)
+    for i in range(label_count):
         imagenet_element_counts[i] = np.count_nonzero(imagenet_assignment == i)
         
     imagenet_cluster_percentages = cluster_imagenet_element_counts/imagenet_element_counts
@@ -201,10 +253,13 @@ def plot_cluster_make_up(cluster_number: int,
                          log_scale: bool = True,
                          x_label: str = 'Imagenet Labels',
                          y1_label: str = '#',
-                         y2_label: str = 'percentage of a label in this cluster',
+                         y2_label: str = '% of a label in this cluster',
                          title: str = 'Make up of cluster',
                          order: str = "number",
-                         n_plot: int = 10):
+                         n_plot: int = 10,
+                         threshold_type: str = "num",
+                         imagenet_element_count_threshold : int = 100,
+                         imagenet_percentage_in_cluster_threshold : float = 0.5):
     """
     Plots the make up of a cluster
     Args:
@@ -230,8 +285,15 @@ def plot_cluster_make_up(cluster_number: int,
         indices = get_top_n_indices(cluster_imagenet_element_counts,n_plot)
     elif order == "percentage":
         indices = get_top_n_indices(imagenet_cluster_percentages,n_plot)
+    elif order == "percentage_of_decayed":
+        percentage_of_decayed = cluster_decayed_imagenet_element_counts/cluster_imagenet_element_counts
+        percentage_of_decayed[np.isnan(percentage_of_decayed)] = 0
+        percentage_of_decayed[cluster_imagenet_element_counts < imagenet_element_count_threshold] = 0
+        # There might not be enough imagenet labels that satisfy the threshold in the cluster
+        n_count = np.count_nonzero(percentage_of_decayed)
+        indices = get_top_n_indices(percentage_of_decayed,min(n_plot,n_count))
     else:
-        raise ValueError("order must be either 'number' or 'percentage'")
+        raise ValueError("order must be either 'number', 'percentage' or 'percentage_of_decayed'")
     # plot
     fig, ax1 = plt.subplots()
     if log_scale:
@@ -244,22 +306,30 @@ def plot_cluster_make_up(cluster_number: int,
         labels = [str(i) for i in indices]
     ax1.bar(labels,
             cluster_imagenet_element_counts[indices],
-            color='g')
-    ax1.bar(labels,
-            cluster_decayed_imagenet_element_counts[indices],
             color='orange')
+    c = ax1.bar(labels,
+            cluster_decayed_imagenet_element_counts[indices],
+            color='g')
+    bar_labels =[str("%2.f" % round(cluster_decayed_imagenet_element_counts[i]/
+                                    cluster_imagenet_element_counts[i]*100, 2)) + "%" for i in indices]
+    ax1.bar_label(c,bar_labels, color ='r')
     
     if title == 'Make up of cluster':
         title = title + ' ' + str(cluster_number) + ' ordered by ' + order
 
+    #ax1.set_ylim(ymin=1)
     ax1.set_ylabel(y1_label)
     ax1.set_xlabel(x_label)
     ax1.set_title(title)
-    ax1.legend(['All', 'Decayed'])
+    l1 = plt.legend(['All', 'Decayed'], loc='upper right',framealpha=0.2)
+    red_patch = mpatches.Patch(color='red', label='Decayed %')
+    l2 = plt.legend(handles=[red_patch], loc='upper center',framealpha=0.2)
+    ax1.add_artist(l1)
+    ax1.add_artist(l2)
 
     ax2 = plt.twinx()
     ax2.plot(labels,
-            imagenet_cluster_percentages[indices],
+            imagenet_cluster_percentages[indices]*100,
             color='b', marker='*')
     ax2.set_ylabel(y2_label)
 
@@ -312,7 +382,8 @@ def get_distribution_of_imagenet_labels_to_clusters(imagenet_cluster_counts:np.n
 
 def get_imagenet_cluster_counts_and_decayed(cluster_assignment: np.ndarray,
                                             imagenet_assignment: np.ndarray,
-                                            decayed_indices: list = []):
+                                            decayed_indices: list = [],
+                                            label_count: int = IMAGENET_LABEL_COUNT):
     
     """For each imagenet labels, count how many times it appears in each cluster and how many of them are decayed.
     Args:
@@ -325,12 +396,12 @@ def get_imagenet_cluster_counts_and_decayed(cluster_assignment: np.ndarray,
             Returned only if decayed_indices is not empty."""
 
     number_of_clusters = np.max(cluster_assignment) + 1
-    imagenet_cluster_counts = np.zeros((IMAGENET_LABEL_COUNT,number_of_clusters), dtype=int)
+    imagenet_cluster_counts = np.zeros((label_count,number_of_clusters), dtype=int)
     for i in range(len(cluster_assignment)):
         imagenet_cluster_counts[imagenet_assignment[i], cluster_assignment[i]] += 1
 
     if len(decayed_indices) > 0:
-        decayed_imagenet_cluster_counts = np.zeros((IMAGENET_LABEL_COUNT,number_of_clusters), dtype=int)
+        decayed_imagenet_cluster_counts = np.zeros((label_count,number_of_clusters), dtype=int)
         for i in decayed_indices:
             decayed_imagenet_cluster_counts[imagenet_assignment[i], cluster_assignment[i]] += 1
 
@@ -357,18 +428,28 @@ def plot_imagenet_make_up(distribution_to_clusters : np.ndarray,
     X_axis = [str(x) for x in top_indices]
     X_axis.append('Rest')
 
+    fig, ax1 = plt.subplots()
     plt.xticks(rotation = 45)
-    plt.bar(X_axis, 
+    ax1.bar(X_axis, 
             np.append(distribution_to_clusters[top_indices], 
                               np.sum(distribution_to_clusters) - np.sum(distribution_to_clusters[top_indices])), 
-            color='g')
-    plt.bar(X_axis,
+            color='orange')
+    c = ax1.bar(X_axis,
             np.append(decayed_distribution_to_clusters[top_indices], 
                               np.sum(decayed_distribution_to_clusters) - np.sum(decayed_distribution_to_clusters[top_indices])), 
-            color='orange')
-    plt.title('Distribution of imagenet label ' + imagenet_label_id +"-" + 
+            color='g')
+    bar_labels =[str("%2.f" % round(decayed_distribution_to_clusters[i]/
+                                    distribution_to_clusters[i]*100, 2)) + "%" for i in top_indices]
+    bar_labels.append(str("%2.f" % round((np.sum(decayed_distribution_to_clusters) - np.sum(decayed_distribution_to_clusters[top_indices]))/
+                                    (np.sum(distribution_to_clusters) - np.sum(distribution_to_clusters[top_indices]))*100, 2)) + "%")
+    ax1.bar_label(c,bar_labels, color ='r')
+    ax1.set_title('Distribution of imagenet label ' + imagenet_label_id +"-" + 
               imagenet_label_name+ ' to the clusters')
-    plt.legend(['All', 'Decayed'])
+    l1 = ax1.legend(['All', 'Decayed'], loc='upper right',framealpha=0.2)
+    red_patch = mpatches.Patch(color='red', label='Decayed %')
+    l2 = ax1.legend(handles=[red_patch], loc='upper center',framealpha=0.2)
+    ax1.add_artist(l1)
+    ax1.add_artist(l2)
     plt.show()    
 
 
@@ -382,6 +463,7 @@ def find_matching_labels_and_clusters(cluster_assignment: np.ndarray,
                                       imagenet_element_count_threshold : int = 1000,
                                       imagenet_percentage_in_cluster_threshold : float = 0.5,
                                       cluster_percentage_in_imagenet_threshold : float = 0.4,
+                                      decay_percentage_of_label_in_cluster_threshold : float = 0,
                                       plot : bool = True,
                                       summary : bool = True):
     
@@ -418,7 +500,9 @@ def find_matching_labels_and_clusters(cluster_assignment: np.ndarray,
     relevant_clusters = []
 
     for row,col in zip(rows, cols):
-        if (im_element_count[row] >= imagenet_element_count_threshold) & (percentages_of_imagenet_labels_in_clusters[row, col] >= cluster_percentage_in_imagenet_threshold):
+        if (im_element_count[row] >= imagenet_element_count_threshold) \
+            and (percentages_of_imagenet_labels_in_clusters[row, col] >= cluster_percentage_in_imagenet_threshold \
+            and (decayed_im_element_count[row]/im_element_count[row] >= decay_percentage_of_label_in_cluster_threshold)):
             relevant_labels.append(row)
             relevant_clusters.append(col)
 
@@ -435,12 +519,18 @@ def find_matching_labels_and_clusters(cluster_assignment: np.ndarray,
             print("label: (" + str(relevant_labels[i]) + ") " + 
                   imagenet_labels_long[relevant_labels[i]] + 
                   ", cluster: " + str(relevant_clusters[i]))
-            print("cluster in label: ", imagenet_cluster_counts[relevant_labels[i],relevant_clusters[i]],
-                  ", total cluster: ", cl_element_count[relevant_clusters[i]],
-                  ", cluster percentage in label: ", percentages_of_imagenet_labels_in_clusters[relevant_labels[i],relevant_clusters[i]])            
-            print("label in cluster: ", imagenet_cluster_counts[relevant_labels[i],relevant_clusters[i]],
-                  ", total label: ", im_element_count[relevant_labels[i]],
-                  ", label percentage in cluster: ", distribution_of_imagenet_labels_to_clusters[relevant_labels[i],relevant_clusters[i]])
+            print(f'cluster in label: {imagenet_cluster_counts[relevant_labels[i],relevant_clusters[i]]}, \
+total cluster: {cl_element_count[relevant_clusters[i]]}, \
+cluster percentage in label: {percentages_of_imagenet_labels_in_clusters[relevant_labels[i],relevant_clusters[i]]:.3f}')
+            print(f'label in cluster: {imagenet_cluster_counts[relevant_labels[i],relevant_clusters[i]]}, \
+total label: {im_element_count[relevant_labels[i]]}, \
+label percentage in cluster: {distribution_of_imagenet_labels_to_clusters[relevant_labels[i],relevant_clusters[i]]:.3f}')
+            #print("cluster in label: ", imagenet_cluster_counts[relevant_labels[i],relevant_clusters[i]],
+             #     ", total cluster: ", cl_element_count[relevant_clusters[i]],
+              #    ", cluster percentage in label: ", percentages_of_imagenet_labels_in_clusters[relevant_labels[i],relevant_clusters[i]])            
+            #print("label in cluster: ", imagenet_cluster_counts[relevant_labels[i],relevant_clusters[i]],
+             #     ", total label: ", im_element_count[relevant_labels[i]],
+              #    ", label percentage in cluster: ", distribution_of_imagenet_labels_to_clusters[relevant_labels[i],relevant_clusters[i]])
             #print("decay rate of label in cluster: ", decayed_imagenet_cluster_counts[relevant_labels[i],relevant_clusters[i]]/imagenet_cluster_counts[relevant_labels[i],relevant_clusters[i]],
             #      ", decay rate of label in dataset: ", decayed_im_element_count[relevant_labels[i]]/im_element_count[relevant_labels[i]],
             #      ", decay rate of cluster in dataset: ", decayed_cl_element_count[relevant_clusters[i]]/cl_element_count[relevant_clusters[i]])
@@ -450,3 +540,46 @@ decay rate of cluster in dataset: {decayed_cl_element_count[relevant_clusters[i]
                   
     
     return relevant_labels, relevant_clusters
+
+# %%
+def fast_save(file, array):
+    magic_string=b"\x93NUMPY\x01\x00v\x00"
+    header=bytes(("{'descr': '"+array.dtype.descr[0][1]+"', 'fortran_order': False, 'shape': "+str(array.shape)+", }").ljust(127-len(magic_string))+"\n",'utf-8')
+    if type(file) == str:
+        file=open(file,"wb")
+    file.write(magic_string)
+    file.write(header)
+    file.write(array.tobytes())
+
+def fast_pack(array):
+    size=len(array.shape)
+    return bytes(array.dtype.byteorder.replace('=','<' if sys.byteorder == 'little' else '>')+array.dtype.kind,'utf-8')+array.dtype.itemsize.to_bytes(1,byteorder='little')+struct.pack(f'<B{size}I',size,*array.shape)+array.tobytes()
+
+def fast_load(file):
+    if type(file) == str:
+        file=open(file,"rb")
+    header = file.read(128)
+    if not header:
+        return None
+    descr = str(header[19:25], 'utf-8').replace("'","").replace(" ","")
+    shape = tuple(int(num) for num in str(header[60:120], 'utf-8').replace(', }', '').replace('(', '').replace(')', '').split(','))
+    datasize = numpy.lib.format.descr_to_dtype(descr).itemsize
+    for dimension in shape:
+        datasize *= dimension
+    return np.ndarray(shape, dtype=descr, buffer=file.read(datasize))
+
+# %%
+def dot_products_distances(emb_A, emb_B, device=torch.device('cuda:7')):
+    """Compute the dot products between all pairs of vectors in emb_A and emb_B.
+    Args:
+        emb_A: np.array of shape (n_A, d)
+        emb_B: np.array of shape (n_B, d)
+    Returns:
+        np.array of shape (n_A, n_B) with the dot products.
+    """
+    import torch
+    emb_A = torch.from_numpy(emb_A).to(torch.float32).to(device)
+    emb_B = torch.from_numpy(emb_B).to(torch.float32).to(device)
+    dot_products = torch.mm(emb_A, emb_B.t()).cpu().numpy()
+    distances = torch.cdist(emb_A, emb_B).cpu().numpy()
+    return dot_products, distances
