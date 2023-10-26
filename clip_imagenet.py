@@ -7,6 +7,7 @@ RUN10 = Path("/data/cc3m/carlini_logs/logs/run_10/2023_03_31-09_33_50-model_RN50
 RUN11 = Path("/data/cc3m/carlini_logs/logs/run_11/2023_03_31-09_33_50-model_RN50-lr_5e-05-b_128-j_8-p_amp/checkpoints") / "epoch_32.pt"
 IMAGENET_FOLDER = Path("/data/imagenet")
 IMAGENET_TRAIN_FOLDER = IMAGENET_FOLDER / "train"
+IMAGENET_TEST_FOLDER = IMAGENET_FOLDER / "val"
 IMAGENET_FOLDERS_CLASSES_MAPPING = DATA_FOLDER / "imagenet_folder_label_mapping.txt"
 IMAGENET_RUNS = DATA_FOLDER / "imagenet_runs"
 RUN10_SAVE_FOLDER = IMAGENET_RUNS / "run10"
@@ -26,8 +27,12 @@ from utils import (plot_missing_num_perc, get_relevant_captions_and_urls, get_cl
     plot_imagenet_make_up, find_matching_labels_and_clusters,get_label_cluster_matching_captions_urls,
     fast_load, fast_save, dot_products_distances)
 
+#%%
+print(os.environ["CUDA_VISIBLE_DEVICES"])
+os.environ["CUDA_VISIBLE_DEVICES"] = "3"
+print(os.environ["CUDA_VISIBLE_DEVICES"])
 # %%
-device = torch.device("cuda:5")
+device = torch.device("cuda")
 
 model_10, _, preprocess_10 = open_clip.create_model_and_transforms(
     'RN50', 
@@ -59,57 +64,58 @@ with open(IMAGENET_FOLDERS_CLASSES_MAPPING, "r") as f:
 # %%
 imagenet_classes_prefix = ["This is a " + label for label in imagenet_classes_long_updated]
 # %%
-save_counter = 0
-text_prep = tokenizer(imagenet_classes_prefix).to(device)
-for i in tqdm(range(len(imagenet_folders))):
-    image_jpgs = os.listdir(IMAGENET_TRAIN_FOLDER / imagenet_folders[i])
-    images = [Image.open(IMAGENET_TRAIN_FOLDER / imagenet_folders[i] / l) for l in image_jpgs]
+if False:
+    save_counter = 0
+    text_prep = tokenizer(imagenet_classes_prefix).to(device)
+    for i in tqdm(range(len(imagenet_folders))):
+        image_jpgs = os.listdir(IMAGENET_TRAIN_FOLDER / imagenet_folders[i])
+        images = [Image.open(IMAGENET_TRAIN_FOLDER / imagenet_folders[i] / l) for l in image_jpgs]
 
-    image_prep_10 = [preprocess_10(image).unsqueeze(0) for image in images]
-    image_prep_11 = [preprocess_11(image).unsqueeze(0) for image in images]
+        image_prep_10 = [preprocess_10(image).unsqueeze(0) for image in images]
+        image_prep_11 = [preprocess_11(image).unsqueeze(0) for image in images]
 
-    image_prep_10 = torch.tensor(np.vstack(image_prep_10)).to(device)
-    image_prep_11 = torch.tensor(np.vstack(image_prep_11)).to(device)
+        image_prep_10 = torch.tensor(np.vstack(image_prep_10)).to(device)
+        image_prep_11 = torch.tensor(np.vstack(image_prep_11)).to(device)
 
-    with torch.no_grad(), torch.cuda.amp.autocast():
-        image_features = model_10.encode_image(image_prep_10)
-        text_features = model_10.encode_text(text_prep)
-        image_features /= image_features.norm(dim=-1, keepdim=True)
-        text_features /= text_features.norm(dim=-1, keepdim=True)
+        with torch.no_grad(), torch.cuda.amp.autocast():
+            image_features = model_10.encode_image(image_prep_10)
+            text_features = model_10.encode_text(text_prep)
+            image_features /= image_features.norm(dim=-1, keepdim=True)
+            text_features /= text_features.norm(dim=-1, keepdim=True)
 
-    comparison_10 = image_features @ text_features.T
-    comparison_10 = comparison_10.cpu().numpy().astype('float16')
+        comparison_10 = image_features @ text_features.T
+        comparison_10 = comparison_10.cpu().numpy().astype('float16')
 
-    with torch.no_grad(), torch.cuda.amp.autocast():
-        image_features = model_11.encode_image(image_prep_11)
-        text_features = model_11.encode_text(text_prep)
-        image_features /= image_features.norm(dim=-1, keepdim=True)
-        text_features /= text_features.norm(dim=-1, keepdim=True)
+        with torch.no_grad(), torch.cuda.amp.autocast():
+            image_features = model_11.encode_image(image_prep_11)
+            text_features = model_11.encode_text(text_prep)
+            image_features /= image_features.norm(dim=-1, keepdim=True)
+            text_features /= text_features.norm(dim=-1, keepdim=True)
 
-    comparison_11 = image_features @ text_features.T
-    comparison_11 = comparison_11.cpu().numpy().astype('float16')
+        comparison_11 = image_features @ text_features.T
+        comparison_11 = comparison_11.cpu().numpy().astype('float16')
 
-    if i == 0:
-        comparison_10_all = comparison_10.copy()
-        comparison_11_all = comparison_11.copy()
-    elif i == len(imagenet_folders) - 1:
-        comparison_10_all = np.vstack((comparison_10_all, comparison_10))
-        comparison_11_all = np.vstack((comparison_11_all, comparison_11))
-        address_10 = RUN10_SAVE_FOLDER / f"comparison_10_{save_counter}.npy"
-        address_11 = RUN11_SAVE_FOLDER / f"comparison_11_{save_counter}.npy"
-        fast_save(str(address_10), comparison_10_all)
-        fast_save(str(address_11), comparison_11_all)
-    elif (i+1) % 200 == 0:
-        address_10 = RUN10_SAVE_FOLDER / f"comparison_10_{save_counter}.npy"
-        address_11 = RUN11_SAVE_FOLDER / f"comparison_11_{save_counter}.npy"
-        fast_save(str(address_10), comparison_10_all)
-        fast_save(str(address_11), comparison_11_all)
-        comparison_10_all = comparison_10.copy()
-        comparison_11_all = comparison_11.copy()
-        save_counter += 1
-    else:
-        comparison_10_all = np.vstack((comparison_10_all, comparison_10))
-        comparison_11_all = np.vstack((comparison_11_all, comparison_11))
+        if i == 0:
+            comparison_10_all = comparison_10.copy()
+            comparison_11_all = comparison_11.copy()
+        elif i == len(imagenet_folders) - 1:
+            comparison_10_all = np.vstack((comparison_10_all, comparison_10))
+            comparison_11_all = np.vstack((comparison_11_all, comparison_11))
+            address_10 = RUN10_SAVE_FOLDER / f"comparison_10_{save_counter}.npy"
+            address_11 = RUN11_SAVE_FOLDER / f"comparison_11_{save_counter}.npy"
+            fast_save(str(address_10), comparison_10_all)
+            fast_save(str(address_11), comparison_11_all)
+        elif (i+1) % 200 == 0:
+            address_10 = RUN10_SAVE_FOLDER / f"comparison_10_{save_counter}.npy"
+            address_11 = RUN11_SAVE_FOLDER / f"comparison_11_{save_counter}.npy"
+            fast_save(str(address_10), comparison_10_all)
+            fast_save(str(address_11), comparison_11_all)
+            comparison_10_all = comparison_10.copy()
+            comparison_11_all = comparison_11.copy()
+            save_counter += 1
+        else:
+            comparison_10_all = np.vstack((comparison_10_all, comparison_10))
+            comparison_11_all = np.vstack((comparison_11_all, comparison_11))
 
 # %%
 for i in tqdm(range(5)):
