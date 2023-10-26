@@ -4,6 +4,7 @@ DATA_FOLDER = Path("/data/cc3m")
 IMAGENET_CLASSES_SHORT = DATA_FOLDER / "imagenet_classes.txt"
 IMAGENET_CLASSES_LONG = DATA_FOLDER / "imagenet_classes_long.txt"
 IMAGENET_FOLDERS_CLASSES_MAPPING = DATA_FOLDER / "imagenet_folder_label_mapping.txt"
+IMAGENET_FOLDERS_CLASSES_MAPPING_ORIGINAL = DATA_FOLDER / "imagenet_folder_label_mapping_original.txt"
 IMAGENET_FOLDER = Path("/data/imagenet")
 IMAGENET_TRAIN_FOLDER = IMAGENET_FOLDER / "train"
 # %%
@@ -24,7 +25,7 @@ with open(IMAGENET_CLASSES_LONG, "r") as f:
 # %%
 imagenet_folder_names = []
 imagenet_labels_unordered = []
-with open ("imagenet_folder_label_mapping_original.txt", "r") as f:
+with open (IMAGENET_FOLDERS_CLASSES_MAPPING_ORIGINAL, "r") as f:
     for line in f:
         imagenet_folder_names.append(line.strip().split(" ")[0])
         imagenet_labels_unordered.append(line.strip().split(" ")[2].replace("_"," "))
