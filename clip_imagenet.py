@@ -176,3 +176,5 @@ ground_truth = np.reshape(ground_truth, (-1,))
 # %%
 np.sum(c11_all_max[0:1300] == res)
 # %%
+print("hi")
+# %%
