@@ -7,7 +7,7 @@ RUN10 = Path("/data/cc3m/carlini_logs/logs/run_10/2023_03_31-09_33_50-model_RN50
 RUN11 = Path("/data/cc3m/carlini_logs/logs/run_11/2023_03_31-09_33_50-model_RN50-lr_5e-05-b_128-j_8-p_amp/checkpoints") / "epoch_32.pt"
 IMAGENET_FOLDER = Path("/data/imagenet")
 IMAGENET_TRAIN_FOLDER = IMAGENET_FOLDER / "train"
-IMAGENET_TEST_FOLDER = IMAGENET_FOLDER / "val"
+IMAGENET_VAL_FOLDER = IMAGENET_FOLDER / "val"
 IMAGENET_FOLDERS_CLASSES_MAPPING = DATA_FOLDER / "imagenet_folder_label_mapping.txt"
 IMAGENET_RUNS = DATA_FOLDER / "imagenet_runs"
 RUN10_SAVE_FOLDER = IMAGENET_RUNS / "run10"
@@ -28,11 +28,11 @@ from utils import (plot_missing_num_perc, get_relevant_captions_and_urls, get_cl
     fast_load, fast_save, dot_products_distances)
 
 #%%
-print(os.environ["CUDA_VISIBLE_DEVICES"])
+""" print(os.environ["CUDA_VISIBLE_DEVICES"])
 os.environ["CUDA_VISIBLE_DEVICES"] = "3"
-print(os.environ["CUDA_VISIBLE_DEVICES"])
+print(os.environ["CUDA_VISIBLE_DEVICES"]) """
 # %%
-device = torch.device("cuda")
+device = torch.device("cuda:3")
 
 model_10, _, preprocess_10 = open_clip.create_model_and_transforms(
     'RN50', 
@@ -62,7 +62,7 @@ with open(IMAGENET_FOLDERS_CLASSES_MAPPING, "r") as f:
         imagenet_classes_long_updated.append(line.strip().split(" ")[1].replace("_"," "))
 
 # %%
-imagenet_classes_prefix = ["This is a " + label for label in imagenet_classes_long_updated]
+imagenet_classes_prefix = ["This is a picture of " + label for label in imagenet_classes_long_updated]
 # %%
 if False:
     save_counter = 0
@@ -177,4 +177,41 @@ ground_truth = np.reshape(ground_truth, (-1,))
 np.sum(c11_all_max[0:1300] == res)
 # %%
 print("hi")
+# %%
+ground_truth = []
+images = []
+for i in tqdm(range(len(imagenet_folders))):
+    images = [Image.open(IMAGENET_VAL_FOLDER / imagenet_folders[i] / l) for l in image_names]
+    image_prep = [preprocess_11(image).unsqueeze(0) for image in images]
+    text_prep = tokenizer(imagenet_classes_prefix).to(device)
+    im2 = torch.tensor(np.vstack(image_prep)).to(device)
+    with torch.no_grad(), torch.cuda.amp.autocast():
+        image_features = model_11.encode_image(im2)
+        text_features = model_11.encode_text(text_prep)
+
+    comparison = image_features @ text_features.T
+
+# %%
+corrects = 0
+tot = 0
+for i in tqdm(range(len(imagenet_folders))):
+    image_names = os.listdir(IMAGENET_VAL_FOLDER / imagenet_folders[i])
+    images = [Image.open(IMAGENET_VAL_FOLDER / imagenet_folders[i] / l) for l in image_names]
+    image_prep = [preprocess_11(image).unsqueeze(0) for image in images]
+    text_prep = tokenizer(imagenet_classes_prefix).to(device)
+    im2 = torch.tensor(np.vstack(image_prep)).to(device)
+    with torch.no_grad(), torch.cuda.amp.autocast():
+        image_features = model_11.encode_image(im2)
+        text_features = model_11.encode_text(text_prep)
+
+    comp = image_features @ text_features.T
+    res = comp.topk(1, 1, True, True)[1].squeeze(1).cpu().numpy()
+    corrects += np.sum(res == i)
+    tot += len(res)
+# %%
+corrects / tot
+# %%
+tot
+# %%
+corrects
 # %%
