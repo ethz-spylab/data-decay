@@ -142,28 +142,26 @@ with autocast():
 top1, top5, tot_logits, tot_targets = get_accuracy_logits_targets(
     model, classifier, imagenet_val_dataloader, args)
 # %%
-topk = (1,5)
 tot_logits = torch.cat(tot_logits, dim=0)
-tot_preds = tot_logits.topk(max(topk), 1, True, True)[1].t()
+# %%
+tot_preds = tot_logits.topk(1, 1, True, True)[1].view(-1)
+# %%
 tot_targets = [tot_targets[i].reshape(1,1) for i in range(len(tot_targets))]
-tot_targets = torch.cat(tot_targets, dim=1)
-tot_correct = tot_preds.eq(tot_targets.expand_as(tot_preds))
-
+tot_targets = torch.cat(tot_targets, dim=1).view(-1)
+tot_correct = tot_preds.eq(tot_targets)
+# %%
 tot_preds = tot_preds.cpu().numpy()
 tot_targets = tot_targets.cpu().numpy()
 tot_correct = tot_correct.cpu().numpy()
-print("For model:")
-for i in topk:
-    print(f"Accuracy@{i}: {tot_correct[:i].sum() / len(tot_correct[0]):.4f}")
 # %% 
 true_positives = np.zeros(IMAGENET1K_COUNT)
 false_positives = np.zeros(IMAGENET1K_COUNT)
 class_count = np.zeros(IMAGENET1K_COUNT)
 
 for i in range(IMAGENET1K_COUNT):
-    true_positives[i] = tot_correct[0, tot_targets[0] == i].sum()
-    false_positives[i] = (np.sum(tot_preds[0] == i) - true_positives[i])
-    class_count[i]= (np.sum(tot_targets[0] == i))
+    true_positives[i] = tot_correct[tot_targets == i].sum()
+    false_positives[i] = (np.sum(tot_preds == i) - true_positives[i])
+    class_count[i]= (np.sum(tot_targets == i))
 # %%
 precision = true_positives / (true_positives + false_positives)
 recall = true_positives / class_count
@@ -192,4 +190,13 @@ def get_precision_recall(preds, targets):
     return precision, recall
 # %%
 a,b = get_precision_recall(tot_preds[0], tot_targets[0])
+# %%
+IMAGENET_CLASSES_SHORT = DATA_FOLDER / "imagenet_classes.txt"
+# %%
+imagenet_classes_short = []
+with open(IMAGENET_CLASSES_SHORT, "r") as f:
+    for line in f:
+        imagenet_classes_short.append(line.strip())
+# %%
+imagenet_classes_short[837]
 # %%
