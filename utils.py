@@ -590,13 +590,15 @@ def dot_products_distances(emb_A, emb_B, device=torch.device('cuda:7')):
 
 # %%
 
-def create_dataloader(image_folder, batch_size=32, shuffle=False, num_workers=4, seed=42):
-    transform = transforms.Compose([
-        transforms.Resize(256),
-        transforms.CenterCrop(224),
-        transforms.ToTensor(),
-        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-    ])
+def create_dataloader(image_folder, batch_size=32, shuffle=False, num_workers=4, seed=42, transform=None):
+    
+    if transform is None:
+        transform = transforms.Compose([
+            transforms.Resize(256),
+            transforms.CenterCrop(224),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+        ])
 
     dataset = datasets.ImageFolder(image_folder, transform=transform)
     torch.manual_seed(seed)
@@ -651,14 +653,16 @@ def get_accuracy_logits_targets(model, classifier, dataloader, args):
     tot_logits = []
     with torch.no_grad():
         top1, top5, n = 0., 0., 0.
-        for images, target in tqdm(dataloader, unit_scale=args.batch_size):
+        #for images, target in tqdm(dataloader, unit_scale=args.batch_size, leave=False):
+        for images, target in dataloader:
             images = images.to(device=args.device, dtype=input_dtype)
             target = target.to(args.device)
 
             with autocast():
                 # predict
-                output = model(image=images)
-                image_features = output['image_features'] if isinstance(output, dict) else output[0]
+                """ output = model(image=images)
+                image_features = output['image_features'] if isinstance(output, dict) else output[0] """
+                image_features = model.encode_image(images, normalize=True)
                 logits = 100. * image_features @ classifier
 
             # measure accuracy
@@ -682,16 +686,18 @@ def get_precision_recall(preds, targets):
         np.array: precision
         np.array: recall"""
     true_positives = np.zeros(IMAGENET1K_COUNT)
-    false_positives = np.zeros(IMAGENET1K_COUNT)
+    true_and_false_positives = np.zeros(IMAGENET1K_COUNT)
     class_count = np.zeros(IMAGENET1K_COUNT)
 
     corrects = preds == targets
 
     for i in range(IMAGENET1K_COUNT):
         true_positives[i] = corrects[targets == i].sum()
-        false_positives[i] = (np.sum(preds == i) - true_positives[i])
+        true_and_false_positives[i] = np.sum(preds == i)
         class_count[i]= (np.sum(targets == i))
 
-    precision = true_positives / (true_positives + false_positives)
+    # It is possible a class is never predicted, in that case precision is nan
+    with np.errstate(divide='ignore', invalid='ignore'):
+        precision = true_positives / true_and_false_positives
     recall = true_positives / class_count
     return precision, recall
