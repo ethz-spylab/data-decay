@@ -15,28 +15,16 @@ DATA_FOLDER = Path("/data/cc3m")
 IMAGENET_FOLDER = Path("/data/imagenet")
 IMAGENET_TRAIN_FOLDER = IMAGENET_FOLDER / "train"
 IMAGENET_VAL_FOLDER = IMAGENET_FOLDER / "val"
-OPEN_CLIP_ZERO_SHOT_IMAGENET_RESULTS = DATA_FOLDER / "open_clip_zero_shot_imagenet_results"
-OPEN_CLIP_ZERO_SHOT_IMAGENET_RESULTS_VAL = OPEN_CLIP_ZERO_SHOT_IMAGENET_RESULTS / "val"
-OPEN_CLIP_ZERO_SHOT_IMAGENET_RESULTS_TRAIN = OPEN_CLIP_ZERO_SHOT_IMAGENET_RESULTS / "train"
-SAVE_FOLDER = OPEN_CLIP_ZERO_SHOT_IMAGENET_RESULTS_VAL
-zeroshots_name = "zeroshots_val.pkl"
+ZERO_SHOT_IMAGENET_RESULTS = DATA_FOLDER / "zero_shot_imagenet_results"
+ZERO_SHOT_IMAGENET_RESULTS_VAL_OPEN_CLIP = ZERO_SHOT_IMAGENET_RESULTS / "val_open_clip"
+ZERO_SHOT_IMAGENET_RESULTS_TRAIN_OPEN_CLIP = ZERO_SHOT_IMAGENET_RESULTS / "train_open_clip"
+ZERO_SHOT_IMAGENET_RESULTS_VAL_CC3M = ZERO_SHOT_IMAGENET_RESULTS / "val_cc3m"
+ZERO_SHOT_IMAGENET_RESULTS_TRAIN_CC3M = ZERO_SHOT_IMAGENET_RESULTS / "train_cc3m"
+ZEROSHOT_NAME = "zeroshots_val.pkl"
 
 from utils import sort_list_by_occurences, get_diff_percent
 
 IMAGENET1K_COUNT = 1000
-# %%
-with open(SAVE_FOLDER / zeroshots_name, 'rb') as f:
-    zeroshots = pickle.load(f)
-# %%
-architectures_and_pretraindatasets = list(zeroshots.keys())
-architectures = []
-pretraindatasets = []
-for architecture_dataset in architectures_and_pretraindatasets:
-    architectures.append(architecture_dataset.split(" ")[0])
-    pretraindatasets.append(architecture_dataset.split(" ")[1])
-# %%
-architectures_dict = sort_list_by_occurences(architectures)
-pretraindatasets_dict = sort_list_by_occurences(pretraindatasets)
 # %%
 def compare_results(name_1, zeroshots_dict_1, 
                     name_2, zeroshots_dict_2):
@@ -60,12 +48,25 @@ def compare_results(name_1, zeroshots_dict_1,
     print(f'{name_1} top-1 accuracy: {zeroshots_dict_1["accuracy_1"]}, \
 \n{name_2} top-1 accuracy: {zeroshots_dict_2["accuracy_1"]}')
 # %%
-list(zeroshots.keys())
+with open(ZERO_SHOT_IMAGENET_RESULTS_VAL_CC3M / ZEROSHOT_NAME, 'rb') as f:
+    zeroshots_cc3m = pickle.load(f)
+
+with open(ZERO_SHOT_IMAGENET_RESULTS_VAL_OPEN_CLIP / ZEROSHOT_NAME, 'rb') as f:
+    zeroshots_open_clip = pickle.load(f)
 # %%
-for k in zeroshots.keys():
-    print(f'{k}: {zeroshots[k]["accuracy_1"]}')
+for k in zeroshots_cc3m.keys():
+    print(f'{k}: {zeroshots_cc3m[k]["accuracy_1"]}')
 # %%
-n1 = "ViT-B-16 laion400m_e32"
-n2 = "ViT-B-32 laion400m_e32"
-compare_results(n1, zeroshots[n1], n2, zeroshots[n2])
+for k in zeroshots_open_clip.keys():
+    print(f'{k}: {zeroshots_open_clip[k]["accuracy_1"]}')
+# %%
+# OPEN_CLIP comparisons
+n1 = "ViT-B-32 commonpool_m_text_s128m_b4k"
+n2 = "ViT-B-32 commonpool_m_basic_s128m_b4k"
+compare_results(n1, zeroshots_open_clip[n1], n2, zeroshots_open_clip[n2])
+# %%
+# CC3M comparisons
+n1 = "run_11 RN50"
+n2 = "run_10 RN50"
+compare_results(n1, zeroshots_cc3m[n1], n2, zeroshots_cc3m[n2])
 # %%
