@@ -23,6 +23,7 @@ ZERO_SHOT_IMAGENET_RESULTS_TRAIN_CC3M = ZERO_SHOT_IMAGENET_RESULTS / "train_cc3m
 ZEROSHOT_NAME = "zeroshots_val.pkl"
 
 from utils import sort_list_by_occurences, get_diff_percent
+import numpy as np
 
 IMAGENET1K_COUNT = 1000
 # %%
@@ -61,12 +62,48 @@ for k in zeroshots_open_clip.keys():
     print(f'{k}: {zeroshots_open_clip[k]["accuracy_1"]}')
 # %%
 # OPEN_CLIP comparisons
-n1 = "ViT-B-32 commonpool_m_text_s128m_b4k"
-n2 = "ViT-B-32 commonpool_m_basic_s128m_b4k"
-compare_results(n1, zeroshots_open_clip[n1], n2, zeroshots_open_clip[n2])
+oc1 = "ViT-B-32 commonpool_m_text_s128m_b4k"
+oc2 = "ViT-B-32 commonpool_m_basic_s128m_b4k"
+compare_results(oc1, zeroshots_open_clip[oc1], oc2, zeroshots_open_clip[oc2])
 # %%
 # CC3M comparisons
 n1 = "run_11 RN50"
 n2 = "run_10 RN50"
 compare_results(n1, zeroshots_cc3m[n1], n2, zeroshots_cc3m[n2])
+# %%
+precision_11 = zeroshots_cc3m['run_11 RN50']['precision']
+precision_10 = zeroshots_cc3m['run_10 RN50']['precision']
+recall_11 = zeroshots_cc3m['run_11 RN50']['recall']
+recall_10 = zeroshots_cc3m['run_10 RN50']['recall']
+
+# TODO: change the nans to 0s in precision_11
+precision_11 = np.nan_to_num(precision_11, nan=0)
+precision_10 = np.nan_to_num(precision_10, nan=0)
+
+# %%
+""" plt.plot(precision_11, recall_11, 'o', label='precision_11 vs recall_11')
+plt.plot(precision_10, recall_10, 'x', label='precision_10 vs recall_10') """
+plt.plot(precision_11, recall_10, 'p', label='precision_11 vs recall_10')
+""" plt.plot(precision_10, recall_11, 's', label='precision_10 vs recall_11') """
+plt.xlabel('precision')
+plt.ylabel('recall')
+plt.legend()
+plt.show()
+# %%
+def precision_recall_curve(precision, recall):
+    plt.plot(precision, recall, 'o')
+    plt.xlabel('precision')
+    plt.ylabel('recall')
+    plt.show()
+# %%
+oc1 = "EVA02-E-14-plus laion2b_s9b_b144k"
+oc2 = "EVA02-E-14 laion2b_s4b_b115k"
+precision_recall_curve(zeroshots_open_clip[oc1]['precision'],
+                       zeroshots_open_clip[oc2]['recall'])
+# %%
+np.polyfit(precision_10,recall_11,1)[0]
+# %%
+np.polyfit(np.nan_to_num(zeroshots_open_clip[oc1]['precision'], nan=0),
+           zeroshots_open_clip[oc2]['recall'],
+           1)[0]
 # %%
