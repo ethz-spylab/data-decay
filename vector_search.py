@@ -105,9 +105,6 @@ threshold = 0.5
 print(f'% decayed indices with similarity less than {threshold}: {np.sum(np.array(similarities) < threshold)/len(similarities)*100:.3f}')
 print(f'# decayed indices with similarity less than {threshold}: {np.sum(np.array(similarities) < threshold)}')
 # %%
-with open('diclist_real.json', 'r') as fin:
-    diclist_real = json.load(fin)
-# %%
 
 threshold = 0.50
 print(f'% decayed indices with similarity less than {threshold}: {np.sum(np.array(similarities) < threshold)/len(similarities)*100:.3f}')
@@ -190,58 +187,6 @@ plt.ylabel("#")
 plt.title("Distribution of similarity scores")
 plt.show() """
 
-# %%
-
-k = np.linspace(0, 1, 101)
-similarities_of_interest_cluster = [diclist_real[i]['real_similar_scores'][-1] for i in range(len(diclist_real))]
-dist = [np.sum(np.array(similarities_of_interest_cluster) < i) for i in k]
-plt.plot(k, dist)
-plt.xlabel("Real similarity scores")
-plt.ylabel("#")
-plt.title("Distribution of similarity scores")
-plt.show()
-
-# %%
-
-k = np.linspace(0, 1, 101)
-similarities_of_interest_cluster = [diclist[decayed_dict[diclist_real[i]['decayed']]]['similar_scores'][-1] for i in range(len(diclist_real))]
-dist = [np.sum(np.array(similarities_of_interest_cluster) < i) for i in k]
-plt.plot(k, dist)
-plt.xlabel("Similarity score of 10th most similar in the same cluster")
-plt.ylabel("#")
-plt.title("Distribution of similarity scores")
-plt.show()
-
-# %%
-k = np.linspace(0, 1, 101)
-similarities_of_interest_cluster = [diclist_close_3[decayed_interest_dict[diclist_real[i]['decayed']]]['similar_scores_close_3'][-1] for i in range(len(diclist_real))]
-dist = [np.sum(np.array(similarities_of_interest_cluster) < i) for i in k]
-plt.plot(k, dist)
-plt.xlabel("Similarity score of 10th most similar in the same cluster + 3 closest")
-plt.ylabel("#")
-plt.title("Distribution of similarity scores")
-plt.show()
-
-# %%
-count_3 = 0
-count_1 = 0
-for i in range(len(diclist_real)):
-    if diclist_close_3[decayed_interest_dict[diclist_real[i]['decayed']]]['similar_exist_close_3'][-1] == diclist_real[i]['real_similar_exist'][-1]:
-        count_3 += 1
-    if diclist[decayed_dict[diclist_real[i]['decayed']]]['similar_exist'][-1] == diclist_real[i]['real_similar_exist'][-1]:
-        count_1 += 1
-
-print(count_1)
-print(count_3)
-
-
-
-
-
-
-
-
-
 
 
 
@@ -251,7 +196,8 @@ print(count_3)
 
 
 # %%
-good_th = 0.5
+good_th = 0.6
+similarities_of_interest_cluster = [diclist_close_3[i]['similar_scores_close_3'][-1] for i in range(len(decayed_of_interest))]
 good_ones = np.where(np.array(similarities_of_interest_cluster) < good_th)[0]
 good_ones = [diclist_close_3[i]['decayed'] for i in good_ones]
 print(len(good_ones))
@@ -266,7 +212,7 @@ for i in range(len(good_ones)):
 new_th = 0.8
 new_good_ones = []
 for i in range(len(good_ones)):
-    if np.sum(css[i] > new_th) > 0:
+    if np.sum(css[i] > new_th) > 10:
         new_good_ones.append(good_ones[i])
 relevant_cc_embeddings = cc_embeddings[new_good_ones]
 relevant_captions = captions[new_good_ones]
@@ -291,7 +237,7 @@ for i in range(N_CLUSTERS):
     print(f'# of samples in cluster {i}: {relevant_cluster_counts[i]}')
 
 # %%
-j = 9
+j = 6
 random.seed(42)
 rc = relevant_captions[relevant_cluster_assignments==j]
 ru = relevant_urls[relevant_cluster_assignments==j]

@@ -701,3 +701,30 @@ def get_precision_recall(preds, targets):
         precision = true_positives / true_and_false_positives
     recall = true_positives / class_count
     return precision, recall
+
+def sort_list_by_occurences(list_to_sort):
+    """"Sorts a list by the number of occurences of its elements in descending order.
+    Returns a dictionary with the elements as keys and their number of occurences as values."""
+    uniques = list(set(list_to_sort))
+    occurrences = {}
+    for item in uniques:
+        count = list_to_sort.count(item)
+        occurrences[item] = count
+    sorted_occurrences = dict(sorted(occurrences.items(), key=lambda item: item[1], reverse=True))
+    return sorted_occurrences
+
+def get_diff_percent(recall_1, recall_2, nans_to_zero=True,
+                     abs_diff=False):
+    """Get the difference in percent between two recalls.
+    If nans_to_zero is True, then nan values are set to 0.
+    If abs_diff is True, then the recall_diff is multiplied by 50 and returned as recall_diff_abs.
+    For each class, this value represents the difference in correctly classified elements between the two models."""
+    recall_diff = recall_1 - recall_2
+    recall_max = np.max(np.vstack((recall_1, recall_2)), axis=0)
+    recall_diff_percent = recall_diff / recall_max
+    if nans_to_zero:
+        recall_diff_percent[np.isnan(recall_diff_percent)] = 0
+    if abs_diff:
+        recall_diff_abs = recall_diff*50
+        return recall_diff_abs, recall_diff_percent
+    return recall_diff_percent
