@@ -76,34 +76,79 @@ precision_10 = zeroshots_cc3m['run_10 RN50']['precision']
 recall_11 = zeroshots_cc3m['run_11 RN50']['recall']
 recall_10 = zeroshots_cc3m['run_10 RN50']['recall']
 
-# TODO: change the nans to 0s in precision_11
+precision_oc1 = zeroshots_open_clip[oc1]['precision']
+precision_oc2 = zeroshots_open_clip[oc2]['precision']
+recall_oc1 = zeroshots_open_clip[oc1]['recall']
+recall_oc2 = zeroshots_open_clip[oc2]['recall']
+
+# TODO: change the nans to 0s in precisions
 precision_11 = np.nan_to_num(precision_11, nan=0)
 precision_10 = np.nan_to_num(precision_10, nan=0)
+precision_oc1 = np.nan_to_num(precision_oc1, nan=0)
+precision_oc2 = np.nan_to_num(precision_oc2, nan=0)
 
 # %%
-""" plt.plot(precision_11, recall_11, 'o', label='precision_11 vs recall_11')
-plt.plot(precision_10, recall_10, 'x', label='precision_10 vs recall_10') """
-plt.plot(precision_11, recall_10, 'p', label='precision_11 vs recall_10')
-""" plt.plot(precision_10, recall_11, 's', label='precision_10 vs recall_11') """
-plt.xlabel('precision')
-plt.ylabel('recall')
+plt.plot(precision_11, precision_10, 'p' ,label='RN50')
+plt.xlabel('run_11 precision')
+plt.ylabel('run_10 precision')
 plt.legend()
 plt.show()
 # %%
-def precision_recall_curve(precision, recall):
-    plt.plot(precision, recall, 'o')
-    plt.xlabel('precision')
-    plt.ylabel('recall')
-    plt.show()
+plt.plot(precision_11, precision_10, 'p' ,label='RN50')
+plt.plot(precision_oc1, precision_oc2, '*', label='ViT-B-32')
+plt.xlabel('precision high acc')
+plt.ylabel('precision low acc')
+plt.legend()
+plt.show()
+
+print(f'{n1} top-1 accuracy: {zeroshots_cc3m[n1]["accuracy_1"]}, \
+      \n{n2} top-1 accuracy: {zeroshots_cc3m[n2]["accuracy_1"]}, \
+      \n{oc1} top-1 accuracy: {zeroshots_open_clip[oc1]["accuracy_1"]}, \
+      \n{oc2} top-1 accuracy: {zeroshots_open_clip[oc2]["accuracy_1"]}')
+print(f'RN50 top-1 precision corrcoef: {np.corrcoef(precision_11, precision_10)[0, 1]}, \
+      \nViT-B-32 top-1 precision corrcoef: {np.corrcoef(precision_oc1, precision_oc2)[0, 1]}')
 # %%
-oc1 = "EVA02-E-14-plus laion2b_s9b_b144k"
-oc2 = "EVA02-E-14 laion2b_s4b_b115k"
-precision_recall_curve(zeroshots_open_clip[oc1]['precision'],
-                       zeroshots_open_clip[oc2]['recall'])
+# Now do the above for recall
+plt.plot(recall_11, recall_10, 'p' ,label='RN50')
+plt.xlabel('run_11 recall')
+plt.ylabel('run_10 recall')
+plt.legend()
+plt.show()
 # %%
-np.polyfit(precision_10,recall_11,1)[0]
+plt.plot(recall_11, recall_10, 'p' ,label='RN50')
+plt.plot(recall_oc1, recall_oc2, '*', label='ViT-B-32')
+plt.xlabel('recall high acc')
+plt.ylabel('recall low acc')
+plt.legend()
+plt.show()
+
+print(f'{n1} top-1 accuracy: {zeroshots_cc3m[n1]["accuracy_1"]}, \
+        \n{n2} top-1 accuracy: {zeroshots_cc3m[n2]["accuracy_1"]}, \
+        \n{oc1} top-1 accuracy: {zeroshots_open_clip[oc1]["accuracy_1"]}, \
+        \n{oc2} top-1 accuracy: {zeroshots_open_clip[oc2]["accuracy_1"]}')
+print(f'RN50 top-1 recall corrcoef: {np.corrcoef(recall_11, recall_10)[0, 1]}, \
+        \nViT-B-32 top-1 recall corrcoef: {np.corrcoef(recall_oc1, recall_oc2)[0, 1]}')
+
 # %%
-np.polyfit(np.nan_to_num(zeroshots_open_clip[oc1]['precision'], nan=0),
-           zeroshots_open_clip[oc2]['recall'],
-           1)[0]
+run11_logits = torch.from_numpy(np.load(ZERO_SHOT_IMAGENET_RESULTS_VAL_CC3M / 'run_11 RN50.npy'))
+run10_logits = torch.from_numpy(np.load(ZERO_SHOT_IMAGENET_RESULTS_VAL_CC3M / 'run_10 RN50.npy'))
+
+targets = torch.from_numpy(np.load(ZERO_SHOT_IMAGENET_RESULTS_VAL_CC3M / 'targets.npy'))
+# %%
+run11_pred = run11_logits.topk(5, 1, True, True)[1]
+correct11 = run11_pred.eq(targets.view(-1, 1).expand_as(run11_pred))
+
+run10_pred = run10_logits.topk(5, 1, True, True)[1]
+correct10 = run10_pred.eq(targets.view(-1, 1).expand_as(run10_pred))
+# %%
+correct10.shape
+# %%
+correct10.sum() / correct10.shape[0]
+# %%
+zeroshots_cc3m[n2]["accuracy_1"]
+# %%
+correct10[targets == 1].sum() / (targets == 0).sum()
+# %%
+(run11_pred==0).sum()
+
 # %%
