@@ -728,3 +728,42 @@ def get_diff_percent(recall_1, recall_2, nans_to_zero=True,
         recall_diff_abs = recall_diff*50
         return recall_diff_abs, recall_diff_percent
     return recall_diff_percent
+
+# %%
+def get_precision_recall_topk(logits, targets, topk = 5):
+
+    """Computes the precision and recall for top k predictions.
+    Args:
+        logits: a 2d numpy array or torch tensor of logits
+        targets: a 1d numpy array or torch tensor of targets
+        topk: the top k predictions to consider
+    Returns:
+        precision: a 1d numpy array of precision values for each class
+        recall: a 1d numpy array of recall values for each class"""
+    
+    if not torch.is_tensor(logits):
+        logits = torch.from_numpy(logits)
+    if not torch.is_tensor(targets):
+        targets = torch.from_numpy(targets)
+
+    topk_preds = logits.topk(topk, 1, True, True)[1]
+    correct = topk_preds.eq(targets.view(-1, 1).expand_as(topk_preds))
+
+    true_positives = np.zeros(IMAGENET1K_COUNT)
+    true_and_false_positives = np.zeros(IMAGENET1K_COUNT)
+    class_count = np.zeros(IMAGENET1K_COUNT)
+
+    topk_preds = topk_preds.cpu().numpy()
+    correct = correct.cpu().numpy()
+    targets = targets.cpu().numpy()
+
+    for i in range(IMAGENET1K_COUNT):
+        class_count[i] = (targets == i).sum()
+        true_positives[i] = correct[targets == i].sum()
+        true_and_false_positives[i] = (topk_preds==i).sum()
+
+        with np.errstate(divide='ignore', invalid='ignore'):
+            precision = true_positives / true_and_false_positives
+        recall = true_positives / class_count
+    
+    return precision, recall

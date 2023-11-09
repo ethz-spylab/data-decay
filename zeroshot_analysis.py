@@ -22,7 +22,7 @@ ZERO_SHOT_IMAGENET_RESULTS_VAL_CC3M = ZERO_SHOT_IMAGENET_RESULTS / "val_cc3m"
 ZERO_SHOT_IMAGENET_RESULTS_TRAIN_CC3M = ZERO_SHOT_IMAGENET_RESULTS / "train_cc3m"
 ZEROSHOT_NAME = "zeroshots_val.pkl"
 
-from utils import sort_list_by_occurences, get_diff_percent
+from utils import sort_list_by_occurences, get_diff_percent, get_precision_recall_topk
 import numpy as np
 
 IMAGENET1K_COUNT = 1000
@@ -93,7 +93,7 @@ plt.xlabel('run_11 precision')
 plt.ylabel('run_10 precision')
 plt.legend()
 plt.show()
-# %%
+
 plt.plot(precision_11, precision_10, 'p' ,label='RN50')
 plt.plot(precision_oc1, precision_oc2, '*', label='ViT-B-32')
 plt.xlabel('precision high acc')
@@ -114,7 +114,7 @@ plt.xlabel('run_11 recall')
 plt.ylabel('run_10 recall')
 plt.legend()
 plt.show()
-# %%
+
 plt.plot(recall_11, recall_10, 'p' ,label='RN50')
 plt.plot(recall_oc1, recall_oc2, '*', label='ViT-B-32')
 plt.xlabel('recall high acc')
@@ -135,20 +135,53 @@ run10_logits = torch.from_numpy(np.load(ZERO_SHOT_IMAGENET_RESULTS_VAL_CC3M / 'r
 
 targets = torch.from_numpy(np.load(ZERO_SHOT_IMAGENET_RESULTS_VAL_CC3M / 'targets.npy'))
 # %%
-run11_pred = run11_logits.topk(5, 1, True, True)[1]
-correct11 = run11_pred.eq(targets.view(-1, 1).expand_as(run11_pred))
+precision_11_top5, recall_11_top5 = get_precision_recall_topk(run11_logits, targets, topk=5)
+precision_10_top5, recall_10_top5 = get_precision_recall_topk(run10_logits, targets, topk=5)
 
-run10_pred = run10_logits.topk(5, 1, True, True)[1]
-correct10 = run10_pred.eq(targets.view(-1, 1).expand_as(run10_pred))
-# %%
-correct10.shape
-# %%
-correct10.sum() / correct10.shape[0]
-# %%
-zeroshots_cc3m[n2]["accuracy_1"]
-# %%
-correct10[targets == 1].sum() / (targets == 0).sum()
-# %%
-(run11_pred==0).sum()
+# Switch the nan values to 0s
+precision_11_top5 = np.nan_to_num(precision_11_top5, nan=0)
+precision_10_top5 = np.nan_to_num(precision_10_top5, nan=0)
 
+plt.plot(precision_11_top5, precision_10_top5, 'p')
+plt.xlabel('run_11 precision')
+plt.ylabel('run_10 precision')
+plt.title('Top-5 precision')
+plt.show()
+
+plt.plot(recall_11_top5, recall_10_top5, 'p')
+plt.xlabel('run_11 recall')
+plt.ylabel('run_10 recall')
+plt.title('Top-5 recall')
+plt.show()
+
+print(f'run_11 and run_10 top-5 precision corrcoef: {np.corrcoef(precision_11_top5, precision_10_top5)[0, 1]:.4f}, \
+    \nrun_11 and run_10 top-5 recall corrcoef: {np.corrcoef(recall_11_top5, recall_10_top5)[0, 1]:.4f}, \
+    \nrun_11 average recall: {np.mean(recall_11_top5):.4f}, \
+    \nrun_10 average recall: {np.mean(recall_10_top5):.4f} ')
+
+# %%
+# Now do the same for top-1 precision and recall
+precision_11_top1, recall_11_top1 = get_precision_recall_topk(run11_logits, targets, topk=1)
+precision_10_top1, recall_10_top1 = get_precision_recall_topk(run10_logits, targets, topk=1)
+
+# Switch the nan values to 0s
+precision_11_top1 = np.nan_to_num(precision_11_top1, nan=0)
+precision_10_top1 = np.nan_to_num(precision_10_top1, nan=0)
+
+plt.plot(precision_11_top1, precision_10_top1, 'p')
+plt.xlabel('run_11 precision')
+plt.ylabel('run_10 precision')
+plt.title('Top-1 precision')
+plt.show()
+
+plt.plot(recall_11_top1, recall_10_top1, 'p')
+plt.xlabel('run_11 recall')
+plt.ylabel('run_10 recall')
+plt.title('Top-1 recall')
+plt.show()
+
+print(f'run_11 and run_10 top-1 precision corrcoef: {np.corrcoef(precision_11_top1, precision_10_top1)[0, 1]:.4f}, \
+    \nrun_11 and run_10 top-1 recall corrcoef: {np.corrcoef(recall_11_top1, recall_10_top1)[0, 1]:.4f}, \
+    \nrun_11 average recall: {np.mean(recall_11_top1):.4f}, \
+    \nrun_10 average recall: {np.mean(recall_10_top1):.4f} ')
 # %%
