@@ -185,3 +185,78 @@ print(f'run_11 and run_10 top-1 precision corrcoef: {np.corrcoef(precision_11_to
     \nrun_11 average recall: {np.mean(recall_11_top1):.4f}, \
     \nrun_10 average recall: {np.mean(recall_10_top1):.4f} ')
 # %%
+#Now do it for a given top-k
+topk = 10
+precision_11_topk, recall_11_topk = get_precision_recall_topk(run11_logits, targets, topk=topk)
+precision_10_topk, recall_10_topk = get_precision_recall_topk(run10_logits, targets, topk=topk)
+
+# Switch the nan values to 0s
+precision_11_topk = np.nan_to_num(precision_11_topk, nan=0)
+precision_10_topk = np.nan_to_num(precision_10_topk, nan=0)
+
+plt.plot(precision_11_topk, precision_10_topk, 'p')
+plt.xlabel('run_11 precision')
+plt.ylabel('run_10 precision')
+plt.title(f'Top-{topk} precision')
+plt.show()
+
+plt.plot(recall_11_topk, recall_10_topk, 'p')
+plt.xlabel('run_11 recall')
+plt.ylabel('run_10 recall')
+plt.title(f'Top-{topk} recall')
+plt.show()
+
+print(f'run_11 and run_10 top-{topk} precision corrcoef: {np.corrcoef(precision_11_topk, precision_10_topk)[0, 1]:.4f}, \
+    \nrun_11 and run_10 top-{topk} recall corrcoef: {np.corrcoef(recall_11_topk, recall_10_topk)[0, 1]:.4f}, \
+    \nrun_11 average recall: {np.mean(recall_11_topk):.4f}, \
+    \nrun_10 average recall: {np.mean(recall_10_topk):.4f} ')
+# %%
+precision_11_top5.mean()
+# %%
+recall_11_top5.mean()
+# %%
+precision_11_top1.mean()
+# %%
+for k in zeroshots_open_clip.keys():
+    for l in zeroshots_open_clip.keys():
+        oc1 = k
+        oc2 = l
+
+        logits_oc1 = torch.from_numpy(np.load(ZERO_SHOT_IMAGENET_RESULTS_VAL_OPEN_CLIP / f'{oc1}.npy'))
+        logits_oc2 = torch.from_numpy(np.load(ZERO_SHOT_IMAGENET_RESULTS_VAL_OPEN_CLIP / f'{oc2}.npy'))
+
+        precision_oc1_top5, recall_oc1_top5 = get_precision_recall_topk(logits_oc1, targets, topk=5)
+        precision_oc2_top5, recall_oc2_top5 = get_precision_recall_topk(logits_oc2, targets, topk=5)
+
+        # Switch the nan values to 0s
+        precision_oc1_top5 = np.nan_to_num(precision_oc1_top5, nan=0)
+        precision_oc2_top5 = np.nan_to_num(precision_oc2_top5, nan=0)
+
+        plt.plot(precision_oc1_top5, precision_oc2_top5, 'p')
+        plt.xlabel(f'{oc1} precision')
+        plt.ylabel(f'{oc2} precision')
+        plt.title('Top-5 precision')
+        plt.show()
+
+        plt.plot(recall_oc1_top5, recall_oc2_top5, 'p')
+        plt.xlabel(f'{oc1} recall')
+        plt.ylabel(f'{oc2} recall')
+        plt.title('Top-5 recall')
+        plt.show()
+
+        print(f'{oc1} and {oc2} top-5 precision corrcoef: {np.corrcoef(precision_oc1_top5, precision_oc2_top5)[0, 1]:.4f}, \
+            \n{oc1} and {oc2} top-5 recall corrcoef: {np.corrcoef(recall_oc1_top5, recall_oc2_top5)[0, 1]:.4f}, \
+            \n{oc1} average recall: {np.mean(recall_oc1_top5):.4f}, \
+            \n{oc2} average recall: {np.mean(recall_oc2_top5):.4f} ')
+
+# %%
+recall_diff_11_10_top5 = recall_10_top5 - recall_11_top5 
+# %%
+outlier_classes = np.where(recall_diff_11_10_top5 < -0.15)
+
+# %%
+# give me names of these classes
+[IMAGENET_CLASSNAMES[x] for x in outlier_classes[0]]
+# %%
+open_clip.list_pretrained()
+# %%

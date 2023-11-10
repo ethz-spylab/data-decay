@@ -732,38 +732,40 @@ def get_diff_percent(recall_1, recall_2, nans_to_zero=True,
 # %%
 def get_precision_recall_topk(logits, targets, topk = 5):
 
-    """Computes the precision and recall for top k predictions.
+    """
+    Computes the precision and recall for top k predictions.
     Args:
         logits: a 2d numpy array or torch tensor of logits
         targets: a 1d numpy array or torch tensor of targets
         topk: the top k predictions to consider
     Returns:
-        precision: a 1d numpy array of precision values for each class
-        recall: a 1d numpy array of recall values for each class"""
+        topk_precision: a 1d numpy array of precision values for each class, when predicting topk sets of labels
+        topk_recall: a 1d numpy array of recall values for each class, when predicting topk sets of labels
+    """
     
     if not torch.is_tensor(logits):
         logits = torch.from_numpy(logits)
     if not torch.is_tensor(targets):
         targets = torch.from_numpy(targets)
 
-    topk_preds = logits.topk(topk, 1, True, True)[1]
-    correct = topk_preds.eq(targets.view(-1, 1).expand_as(topk_preds))
+    topk_preds = logits.topk(topk, 1, True, True)[1] # (num_samples, topk)
+    correct = topk_preds.eq(targets.view(-1, 1).expand_as(topk_preds)) # (num_samples, topk)
 
-    true_positives = np.zeros(IMAGENET1K_COUNT)
-    true_and_false_positives = np.zeros(IMAGENET1K_COUNT)
-    class_count = np.zeros(IMAGENET1K_COUNT)
+    true_positives = np.zeros(IMAGENET1K_COUNT) # (num_classes,)
+    true_and_false_positives = np.zeros(IMAGENET1K_COUNT) # (num_classes,)
+    class_count = np.zeros(IMAGENET1K_COUNT) # (num_classes,)
 
-    topk_preds = topk_preds.cpu().numpy()
-    correct = correct.cpu().numpy()
-    targets = targets.cpu().numpy()
+    topk_preds = topk_preds.cpu().numpy() # (num_samples, topk)
+    correct = correct.cpu().numpy() # (num_samples, topk)
+    targets = targets.cpu().numpy() # (num_samples,)
 
     for i in range(IMAGENET1K_COUNT):
-        class_count[i] = (targets == i).sum()
-        true_positives[i] = correct[targets == i].sum()
-        true_and_false_positives[i] = (topk_preds==i).sum()
+        class_count[i] = (targets == i).sum() # number of elements in class i
+        true_positives[i] = correct[targets == i].sum() # number of class i elements that are topk predicted as class i
+        true_and_false_positives[i] = (topk_preds==i).sum() # number of elements that are topk predicted as class i
 
         with np.errstate(divide='ignore', invalid='ignore'):
-            precision = true_positives / true_and_false_positives
-        recall = true_positives / class_count
+            topk_precision = true_positives / true_and_false_positives
+        topk_recall = true_positives / class_count
     
-    return precision, recall
+    return topk_precision, topk_recall
