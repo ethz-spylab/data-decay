@@ -142,7 +142,7 @@ for i in tqdm(range(len(decayed_indices))):
 percentage_decayed_in_imagenet = decayed_cc_distribution_to_imagenet / cc_distribution_to_imagenet
 percentage_decayed_in_imagenet[np.isnan(percentage_decayed_in_imagenet)] = 0
 # %%
-k = 200
+k = 20
 num_threshold = 10
 percentage_decayed_in_imagenet_cp = percentage_decayed_in_imagenet.copy()
 percentage_decayed_in_imagenet_cp[cc_distribution_to_imagenet < num_threshold] = 0
