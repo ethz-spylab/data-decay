@@ -25,8 +25,7 @@ parser.add_argument('--torch', action='store_true',
 args = parser.parse_args()
 
 os.environ['OPENBLAS_NUM_THREADS'] = '1'
-cuda_device = "cuda:{}".format(args.cuda_device)
-device = torch.device(cuda_device)
+os.environ['CUDA_VISIBLE_DEVICES'] = str(args.cuda_device)
 
 # Load the embeddings
 embeddings_path = args.embeddings_path
