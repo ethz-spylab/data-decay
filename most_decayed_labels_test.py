@@ -1,3 +1,4 @@
+# %%
 import argparse
 import os
 import numpy as np
@@ -7,36 +8,6 @@ from utils import get_top_n_indices
 import json
 import pickle
 from tqdm import tqdm
-
-""" parser = argparse.ArgumentParser(description='Find the most decayed labels. The dataset sample to label assignments are done with similarity thresholding. \
-                                    This means a sample might zero, one, or more labels.')
-
-parser.add_argument('--dataset_embeddings_path', type=str, default='embeddings/text_embeddings.npy',
-                    help='embeddings path for the dataset. This can be either the image or caption embeddings.')
-parser.add_argument('--labels_path', type=str, default='labels.txt',
-                    help='labels path')
-parser.add_argument('--label_embeddings_path', type=str, default='embeddings/labels_embeddings.npy',
-                    help='label embeddings path')
-parser.add_argument('--decayed_indices_path', type=str, default='decayed_indices.txt',
-                    help='decayed indices path')
-parser.add_argument('--assignments_folder', type=str, default='assignments/',
-                    help='assignments folder will include the assignments from labels to dataset samples, and dataset samples to labels. If it does not exist, it will be created.')
-parser.add_argument('--similarity_threshold', type=float, default=0.5,
-                    help='similarity threshold for assigning a sample to a label')
-parser.add_argument('--display_similarity_threshold', type=float, default=0.5,
-                    help='similarity threshold for displaying a label vs dataset sample plot')
-parser.add_argument('--sample_count_threshold', type=int, default=1000,
-                    help='how many samples a label should be present in the dataset to be considered')
-parser.add_argument('--plots_count', type=int, default=10,
-                    help='how many plots to display')
-parser.add_argument('--save_plots', type=bool, default=False,
-                    help='whether to save the plots or not')
-parser.add_argument('--plots_folder', type=str, default='plots/',
-                    help='plots folder will include the plots of the top N highest percentage decayed labels. If it does not exist, it will be created.')
-parser.add_argument('--verbose', type=int, default=1,
-                    help='verbosity of code')
-
-args = parser.parse_args() """
 
 class Args:
     def __init__(self):
@@ -48,9 +19,7 @@ class Args:
         self.similarity_threshold = 0.5
         self.display_similarity_threshold = 0.5
         self.sample_count_threshold = 1000
-        self.plots_count = 10
-        self.save_plots = False
-        self.plots_folder = '/data/cc3m/script_tests/plots/'
+        self.display_plots_count = 10
         self.verbose = 1
 
 args = Args()
@@ -177,42 +146,30 @@ percentage_decayed_in_label[np.isnan(percentage_decayed_in_label)] = 0
 
 percentage_decayed_in_label_cp = percentage_decayed_in_label.copy()
 percentage_decayed_in_label_cp[dataset_to_label_distribution < args.sample_count_threshold] = 0
-highest_percentage_num_threshold = get_top_n_indices(percentage_decayed_in_label_cp, args.plots_count)
+highest_percentage_num_threshold = get_top_n_indices(percentage_decayed_in_label_cp, args.display_plots_count)
 
 decayed_dataset_vs_label = dataset_vs_label[decayed_array==1,:]
 existing_dataset_vs_label = dataset_vs_label[decayed_array==0,:]
 
 # %%
 
-# Check if the plots folder exists
-if not os.path.exists(args.plots_folder):
-    print(f'Creating folder {args.plots_folder}')
-    os.makedirs(args.plots_folder)
-
 # Plot the top N highest percentage decayed labels
 th = args.display_similarity_threshold
-with open(args.plots_folder + "highest_percentage_num_threshold.txt", "w") as f:
-    for i in range(args.plots_count):
+for i in range(args.display_plots_count):
 
-        txt = highest_percentage_num_threshold[i]
-        plt.hist(decayed_dataset_vs_label[:,txt], bins=np.linspace(th,1,int((1-th)*50)+1),alpha=0.6)
-        plt.hist(existing_dataset_vs_label[:,txt], bins=np.linspace(th,1,int((1-th)*50)+1),alpha=0.6)
-        plt.legend(["Decayed", "Existing"])
-        plt.xlabel("Similarity score")
-        plt.ylabel("Count")
-        title = str(txt) + ", label: " + str(txt)+ " " + labels[txt]+ " vs captions"
-        plt.title(title)
-        plt.savefig(args.plots_folder + title + ".png")
-        plt.show()
+    txt = highest_percentage_num_threshold[i]
+    plt.hist(decayed_dataset_vs_label[:,txt], bins=np.linspace(th,1,int((1-th)*50)+1),alpha=0.6)
+    plt.hist(existing_dataset_vs_label[:,txt], bins=np.linspace(th,1,int((1-th)*50)+1),alpha=0.6)
+    plt.legend(["Decayed", "Existing"])
+    plt.xlabel("Similarity score")
+    plt.ylabel("Count")
+    plt.title("\""+labels[txt]+"/"+str(txt)+"\""+" vs captions")
+    plt.show()
 
-        dec = np.sum(decayed_dataset_vs_label[:,txt] > th)
-        ex = np.sum(existing_dataset_vs_label[:,txt] > th)
-        print(f'Top {i} highest percentage decayed label: {labels[txt]}/{txt}')
-        print(f'# of decayed: {dec}, \
-            \n# of total: {ex+dec}, \
-            \n% of decayed: {dec/(ex+dec)*100:.2f}')
-        f.write(f'Top {i} highest percentage decayed label: {labels[txt]}/{txt}\n')
-        f.write(f'# of decayed: {dec}, \
-            \n# of total: {ex+dec}, \
-            \n% of decayed: {dec/(ex+dec)*100:.2f}\n\n')
+    dec = np.sum(decayed_dataset_vs_label[:,txt] > th)
+    ex = np.sum(existing_dataset_vs_label[:,txt] > th)
+    print(f'Top {i} highest percentage decayed label: {labels[txt]}/{txt}')
+    print(f'# of decayed: {dec}, \
+        \n# of total: {ex+dec}, \
+        \n% of decayed: {dec/(ex+dec)*100:.2f}')
 # %%

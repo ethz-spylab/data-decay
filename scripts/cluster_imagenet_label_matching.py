@@ -12,7 +12,7 @@ from sklearn.cluster import KMeans, MiniBatchKMeans
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from utils import (plot_missing_num_perc, get_relevant_captions, get_cluster_make_up, plot_cluster_make_up,  
+from utils import (plot_missing_num_perc, get_relevant_captions_and_urls, get_cluster_make_up, plot_cluster_make_up,  
     get_top_n_indices, get_percentages_of_topk_labels_in_clusters, 
     get_distribution_of_imagenet_labels_to_clusters, get_imagenet_cluster_counts_and_decayed,
     plot_imagenet_make_up, find_matching_labels_and_clusters)
@@ -51,7 +51,7 @@ distances = np.load(DISTANCES)
 
 # %%
 # TODO: check if dot products make sense
-get_relevant_captions(dot_products, 29, only_argmax=True, sort_best=False)
+get_relevant_captions_and_urls(dot_products, 29, only_argmax=True, sort_best=False)
 
 # %%
 cluster_assignment = np.argmax(dot_products, axis=1)

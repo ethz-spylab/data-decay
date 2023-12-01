@@ -30,3 +30,6 @@ with open(ZERO_SHOT_IMAGENET_RESULTS_VAL_CC3M / "zeroshots_val.pkl", 'rb') as f:
 for key in zeroshots.keys():
     print(f'{key.split(" ")[0]}, top1: {zeroshots[key]["accuracy_1"]}')
 # %%
+for i in tqdm(range(10)):
+    print("hi")
+# %%

@@ -15,8 +15,8 @@ parser.add_argument('--labels_path', type=str, default='labels.txt',
                     help='labels path')
 parser.add_argument('--label_embeddings_path', type=str, default='embeddings/labels_embeddings.npy',
                     help='label embeddings path')
-parser.add_argument('--cluster path', type=str, default='clusters/',
-                    help='cluster path')
+parser.add_argument('--clusters_folder', type=str, default='clusters/',
+                    help='clusters folder')
 parser.add_argument('--similarity_type', type=str, default='dot_products',
                     help='similarity type. Either dot_products or distances. If distances is chosen, 1 - distances is used.')
 parser.add_argument('--decayed_indices_path', type=str, default='decayed_indices.txt',
@@ -48,15 +48,15 @@ with open(labels_path, "r") as f:
 # Load the cluster centers, distances, and similarities
 if args.verbose:
     print("Loading cluster centers.")
-cluster_centers_path = os.path.join(args.cluster_path, 'cluster_centers.npy')
+cluster_centers_path = os.path.join(args.clusters_folder, 'cluster_centers.npy')
 cluster_centers = np.load(cluster_centers_path)
 if args.verbose:
     print("Loading distances")
-distances_path = os.path.join(args.cluster_path, 'distances.npy')
+distances_path = os.path.join(args.clusters_folder, 'distances.npy')
 distances = np.load(distances_path)
 if args.verbose:
     print("Loading similarities")
-dot_products_path = os.path.join(args.cluster_path, 'dot_products.npy')
+dot_products_path = os.path.join(args.clusters_folder, 'dot_products.npy')
 dot_products = np.load(dot_products_path)
 
 if args.similarity_type == 'distances':
@@ -104,6 +104,6 @@ _, _ = find_matching_labels_and_clusters(cluster_assignment,
                                          imagenet_element_count_threshold  = args.sample_count_threshold,
                                          imagenet_percentage_in_cluster_threshold  = args.label_percentage_in_cluster_threshold,
                                          cluster_percentage_in_imagenet_threshold  = args.cluster_percentage_in_label_threshold,
-                                         decayed_percentage_threshold = args.decayed_percentage_threshold,
+                                         decay_percentage_of_label_in_cluster_threshold = args.decayed_percentage_threshold,
                                          plot = args.plot,
                                          summary = args.summary)

@@ -15,15 +15,16 @@ parser.add_argument('--cluster_count', type=int, default=100,
                     help='cluster count')
 parser.add_argument('--save_folder', type=str, default='clusters',
                     help='save folder')
-parser.add_argument('--cuda_device', type=int, default=0, 
+parser.add_argument('--cuda_device', type=int, default=-1, 
                     help='cuda device')
-parser.add_argument('--verbose', type=int, default=1,
+parser.add_argument('--verbose', type=int, default=0,
                     help='verbosity of kmeans fitter')
 
 args = parser.parse_args()
 
 os.environ['OPENBLAS_NUM_THREADS'] = '1'
-device = torch.device('cuda:7')
+cuda_device = "cuda:{}".format(args.cuda_device)
+device = torch.device(cuda_device)
 
 # Load the embeddings
 embeddings_path = args.embeddings_path
