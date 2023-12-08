@@ -151,6 +151,8 @@ if os.path.exists(args.decayed_samples_dict_path):
         diclist = json.load(fp)
 else:
     print(f'Creating decayed samples dict at {args.decayed_samples_dict_path}')
+
+    # For each cluster find the samples assigned to it
     clusters_decayed = []
     clusters_exist = []
     for i in range(cluster_counts):

@@ -14,7 +14,7 @@ from contextlib import suppress
 from open_clip import get_input_dtype
 
 #%%
-def get_top_n_indices(array : np.ndarray, n: int = 10):
+def get_top_n_indices(array : np.ndarray, n: int = 10, sort = True):
     """Returns the indices of the top n elements of an array.
     
     Args:
@@ -22,8 +22,12 @@ def get_top_n_indices(array : np.ndarray, n: int = 10):
         n (int): The number of indices to return.
     Returns:
         np.array: The indices of the top n elements of the array."""
-    
-    return np.argsort(array)[::-1][:n]
+    if sort:
+        #return np.argsort(array)[::-1][:n]
+        temp = np.argpartition(array, -n)[-n:]
+        return temp[np.argsort(array[temp])][::-1]
+    else:
+        return np.argpartition(array, -n)[-n:]
 
 #%%
 def get_relevant_captions_and_urls(similarity: np.ndarray, 
@@ -542,3 +546,234 @@ decay rate of cluster in dataset: {decayed_cl_element_count[relevant_clusters[i]
                   
     
     return relevant_labels, relevant_clusters
+
+# %%
+def fast_save(file, array):
+    magic_string=b"\x93NUMPY\x01\x00v\x00"
+    header=bytes(("{'descr': '"+array.dtype.descr[0][1]+"', 'fortran_order': False, 'shape': "+str(array.shape)+", }").ljust(127-len(magic_string))+"\n",'utf-8')
+    if type(file) == str:
+        file=open(file,"wb")
+    file.write(magic_string)
+    file.write(header)
+    file.write(array.tobytes())
+
+def fast_pack(array):
+    size=len(array.shape)
+    return bytes(array.dtype.byteorder.replace('=','<' if sys.byteorder == 'little' else '>')+array.dtype.kind,'utf-8')+array.dtype.itemsize.to_bytes(1,byteorder='little')+struct.pack(f'<B{size}I',size,*array.shape)+array.tobytes()
+
+def fast_load(file):
+    if type(file) == str:
+        file=open(file,"rb")
+    header = file.read(128)
+    if not header:
+        return None
+    descr = str(header[19:25], 'utf-8').replace("'","").replace(" ","")
+    shape = tuple(int(num) for num in str(header[60:120], 'utf-8').replace(', }', '').replace('(', '').replace(')', '').split(','))
+    datasize = numpy.lib.format.descr_to_dtype(descr).itemsize
+    for dimension in shape:
+        datasize *= dimension
+    return np.ndarray(shape, dtype=descr, buffer=file.read(datasize))
+
+# %%
+def dot_products_distances(emb_A, emb_B, device=torch.device('cuda:7')):
+    """Compute the dot products between all pairs of vectors in emb_A and emb_B.
+    Args:
+        emb_A: np.array of shape (n_A, d)
+        emb_B: np.array of shape (n_B, d)
+    Returns:
+        np.array of shape (n_A, n_B) with the dot products.
+    """
+    import torch
+    emb_A = torch.from_numpy(emb_A).to(torch.float32).to(device)
+    emb_B = torch.from_numpy(emb_B).to(torch.float32).to(device)
+    dot_products = torch.mm(emb_A, emb_B.t()).cpu().numpy()
+    distances = torch.cdist(emb_A, emb_B).cpu().numpy()
+    return dot_products, distances
+
+# %%
+
+def create_dataloader(image_folder, batch_size=32, shuffle=False, num_workers=4, seed=42, transform=None):
+    
+    if transform is None:
+        transform = transforms.Compose([
+            transforms.Resize(256),
+            transforms.CenterCrop(224),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+        ])
+
+    dataset = datasets.ImageFolder(image_folder, transform=transform)
+    torch.manual_seed(seed)
+    dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=shuffle, num_workers=num_workers)
+    
+    return dataloader
+
+# %%
+
+def get_autocast(precision):
+    if precision == 'amp':
+        return torch.cuda.amp.autocast
+    elif precision == 'amp_bfloat16' or precision == 'amp_bf16':
+        # amp_bfloat16 is more stable than amp float16 for clip training
+        return lambda: torch.cuda.amp.autocast(dtype=torch.bfloat16)
+    elif precision == 'float32':
+        return lambda: torch.cuda.amp.autocast(dtype=torch.float32)
+    else:
+        return suppress
+    
+# %%
+def accuracy(output, target, topk=(1,)):
+    """Computes top k accuracy
+    Args:
+        output (torch.Tensor): model output
+        target (torch.Tensor): ground truth labels
+        topk (tuple): top k values to calculate accuracy for
+    Returns:
+        list: top k accuracies"""
+    pred = output.topk(max(topk), 1, True, True)[1].t()
+    correct = pred.eq(target.view(1, -1).expand_as(pred))
+    return [float(correct[:k].reshape(-1).float().sum(0, keepdim=True).cpu().numpy()) for k in topk]
+
+#%%
+def get_accuracy_logits_targets(model, classifier, dataloader, args):
+    """" Calculates accuracy, logits and targets for a given model, classifier and dataloader
+    Args:
+        model (torch.nn.Module): model to evaluate
+        classifier (torch.nn.Module): classifier to use
+        dataloader (torch.utils.data.DataLoader): dataloader to use
+        args (Args): arguments
+    Returns:
+        float: top 1 accuracy
+        float: top 5 accuracy
+        list: logits
+        list: targets
+    """
+    autocast = get_autocast(args.precision)
+    input_dtype = get_input_dtype(args.precision)
+
+    tot_targets = []
+    tot_logits = []
+    with torch.no_grad():
+        top1, top5, n = 0., 0., 0.
+        #for images, target in tqdm(dataloader, unit_scale=args.batch_size, leave=False):
+        for images, target in dataloader:
+            images = images.to(device=args.device, dtype=input_dtype)
+            target = target.to(args.device)
+
+            with autocast():
+                # predict
+                """ output = model(image=images)
+                image_features = output['image_features'] if isinstance(output, dict) else output[0] """
+                image_features = model.encode_image(images, normalize=True)
+                logits = 100. * image_features @ classifier
+
+            # measure accuracy
+            acc1, acc5 = accuracy(logits, target, topk=(1, 5))
+            top1 += acc1
+            top5 += acc5
+            n += images.size(0)
+            tot_targets.extend(target)
+            tot_logits.append(logits)
+
+    top1 = (top1 / n)
+    top5 = (top5 / n)
+    return top1, top5, tot_logits, tot_targets
+
+def get_precision_recall(preds, targets, length=None):
+    """ Calculates precision and recall for each class
+    Args:
+        preds (np.array): predictions
+        targets (np.array): targets
+    Returns:
+        np.array: precision
+        np.array: recall"""
+    
+    if length is None:
+        length = np.max(targets) + 1
+    true_positives = np.zeros(length)
+    true_and_false_positives = np.zeros(length)
+    class_count = np.zeros(length)
+
+    corrects = preds == targets
+
+    for i in range(length):
+        true_positives[i] = corrects[targets == i].sum()
+        true_and_false_positives[i] = np.sum(preds == i)
+        class_count[i]= (np.sum(targets == i))
+
+    # It is possible a class is never predicted, in that case precision is nan
+    with np.errstate(divide='ignore', invalid='ignore'):
+        precision = true_positives / true_and_false_positives
+    recall = true_positives / class_count
+    return precision, recall
+
+def sort_list_by_occurences(list_to_sort):
+    """"Sorts a list by the number of occurences of its elements in descending order.
+    Returns a dictionary with the elements as keys and their number of occurences as values."""
+    uniques = list(set(list_to_sort))
+    occurrences = {}
+    for item in uniques:
+        count = list_to_sort.count(item)
+        occurrences[item] = count
+    sorted_occurrences = dict(sorted(occurrences.items(), key=lambda item: item[1], reverse=True))
+    return sorted_occurrences
+
+def get_diff_percent(recall_1, recall_2, nans_to_zero=True,
+                     abs_diff=False):
+    """Get the difference in percent between two recalls.
+    If nans_to_zero is True, then nan values are set to 0.
+    If abs_diff is True, then the recall_diff is multiplied by 50 and returned as recall_diff_abs.
+    For each class, this value represents the difference in correctly classified elements between the two models."""
+    recall_diff = recall_1 - recall_2
+    recall_max = np.max(np.vstack((recall_1, recall_2)), axis=0)
+    recall_diff_percent = recall_diff / recall_max
+    if nans_to_zero:
+        recall_diff_percent[np.isnan(recall_diff_percent)] = 0
+    if abs_diff:
+        recall_diff_abs = recall_diff*50
+        return recall_diff_abs, recall_diff_percent
+    return recall_diff_percent
+
+# %%
+def get_precision_recall_topk(logits, targets, topk = 5, length=None):
+
+    """
+    Computes the precision and recall for top k predictions.
+    Args:
+        logits: a 2d numpy array or torch tensor of logits
+        targets: a 1d numpy array or torch tensor of targets
+        topk: the top k predictions to consider
+    Returns:
+        topk_precision: a 1d numpy array of precision values for each class, when predicting topk sets of labels
+        topk_recall: a 1d numpy array of recall values for each class, when predicting topk sets of labels
+    """
+
+    if length is None:
+        length = np.max(targets) + 1
+    
+    if not torch.is_tensor(logits):
+        logits = torch.from_numpy(logits)
+    if not torch.is_tensor(targets):
+        targets = torch.from_numpy(targets)
+
+    topk_preds = logits.topk(topk, 1, True, True)[1] # (num_samples, topk)
+    correct = topk_preds.eq(targets.view(-1, 1).expand_as(topk_preds)) # (num_samples, topk)
+
+    true_positives = np.zeros(length) # (num_classes,)
+    true_and_false_positives = np.zeros(length) # (num_classes,)
+    class_count = np.zeros(length) # (num_classes,)
+
+    topk_preds = topk_preds.cpu().numpy() # (num_samples, topk)
+    correct = correct.cpu().numpy() # (num_samples, topk)
+    targets = targets.cpu().numpy() # (num_samples,)
+
+    for i in range(length):
+        class_count[i] = (targets == i).sum() # number of elements in class i
+        true_positives[i] = correct[targets == i].sum() # number of class i elements that are topk predicted as class i
+        true_and_false_positives[i] = (topk_preds==i).sum() # number of elements that are topk predicted as class i
+
+        with np.errstate(divide='ignore', invalid='ignore'):
+            topk_precision = true_positives / true_and_false_positives
+        topk_recall = true_positives / class_count
+    
+    return topk_precision, topk_recall
