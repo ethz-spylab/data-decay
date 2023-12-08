@@ -25,8 +25,8 @@ class Args:
         self.captions_urls_path = "/data/cc3m/cc3m_2023/Train_GCC-training.tsv"
         self.result_folder = '/data/cc3m/script_tests/results/'
         self.closest_clusters_count = 3
-        self.similarity_to_existing_samples_threshold = 0.6
-        self.similarity_to_decayed_samples_lower_threshold = 0.6
+        self.similarity_to_existing_samples_threshold = 0.8
+        self.similarity_to_decayed_samples_lower_threshold = 0.8
         self.similarity_to_decayed_samples_upper_threshold = 1.0
         self.similar_decayed_samples_count_threshold = 10
         self.decayed_sample_clustering = True

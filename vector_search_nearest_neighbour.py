@@ -10,13 +10,15 @@ from tqdm import tqdm
 import json
 import random
 import argparse
+from kmean_torch import kmeans_core
 
 from utils_new import get_top_n_indices, dot_products_distances
 # %%
 class Args:
     def __init__(self):
         self.dataset_embeddings_path = "/data/cc3m/cc3m_2023/embeddings/text_embeddings_L14.npy"
-        self.decayed_indices_path = '/data/cc3m/script_tests/decayed_indices/combined_decayed_indices.txt'
+        #self.decayed_indices_path = '/data/cc3m/script_tests/decayed_indices/combined_decayed_indices.txt'
+        self.decayed_indices_path = '/data/cc3m/decayed_indices.txt'
         self.separate_decayed_indices_path = '/data/cc3m/script_tests/decayed_indices/decayed_indices.txt'
         self.clusters_folder = '/data/cc3m/script_tests/clusters/'
         self.decayed_samples_dict_nn_path = '/data/cc3m/script_tests/diclist_nn.json'
@@ -26,10 +28,10 @@ class Args:
         self.captions_urls_path = "/data/cc3m/cc3m_2023/Train_GCC-training.tsv"
         self.result_folder = '/data/cc3m/script_tests/results/'
         self.nearby_sample_count = 20
-        self.nearby_decayed_sample_count_threshold = 10
+        self.nearby_decayed_sample_count_threshold = 17
         self.closest_clusters_count = 3
         self.check_similarity = True
-        self.lower_similarity_threshold = 0.7
+        self.lower_similarity_threshold = 0.8
         self.verbose = 1
 
 args = Args()
@@ -53,8 +55,13 @@ if args.verbose:
 
 # Load the list of decayed indices
 decayed_indices_path = args.decayed_indices_path
+""" with open(decayed_indices_path, "r") as f:
+    decayed_indices = json.load(f) """
+
+decayed_indices = []
 with open(decayed_indices_path, "r") as f:
-    decayed_indices = json.load(f)
+    for line in f:
+        decayed_indices.append(int(line.strip()))
 
 decayed_indices_size = len(decayed_indices)
 if args.verbose:
@@ -146,7 +153,7 @@ else:
 
 # %%
 #Test without other closest clusters
-print(f'Testing without other closest clusters')
+""" print(f'Testing without other closest clusters')
 nn_decayed_counts = [diclist_nn[x]['nn_decayed_count'] for x in range(len(diclist_nn))]
 check = np.array(nn_decayed_counts) >= args.nearby_decayed_sample_count_threshold
 
@@ -202,10 +209,10 @@ print(f'Total number of samples in targeted groups (without duplicates): \
 
 random_decay_indices_significant_assignment = np.intersect1d(random_decay_indices, good_indices)
 combined_decay_indices_significant_assignment = np.intersect1d(combined_decay_indices, good_indices)
-
+ """
 # %%
-print(f'Number of assigned random decayed samples without closest clusters: \
-      \n{len(random_decay_indices_significant_assignment)}')
+""" print(f'Number of assigned random decayed samples without closest clusters: \
+      \n{len(random_decay_indices_significant_assignment)}') """
 #print(captions[random_decay_indices_significant_assignment])
 #k = 8
 #print(f'{good_indice_dict[good_indices[8]]}')
@@ -311,9 +318,15 @@ if args.consider_nns:
     good_indices = np.unique(good_indices).tolist()
 
 print(f'Number of good ones: {len(good_ones)}')
-print(f'Number of good indices: {len(good_indices)}')
+print(f'Number of good indices, pre-filter for decayed: {len(good_indices)}')
 
-targeted_decay_indices = np.array([np.array(x) for x in separate_decayed_indices[:-1]])
+# remove the non-decayed samples from the good_indices
+good_indices = np.array(good_indices)
+good_indices = good_indices[decayed_array[good_indices]==1].tolist()
+
+print(f'Number of good indices, post-filter for decayed: {len(good_indices)}')
+
+""" targeted_decay_indices = np.array([np.array(x) for x in separate_decayed_indices[:-1]])
 random_decay_indices = np.array(separate_decayed_indices[-1])
 combined_decay_indices = np.array(decayed_indices)
 
@@ -337,15 +350,74 @@ print(f'Total number of samples in targeted groups (without duplicates): \
       \n{len(np.intersect1d(tot_targeted_decay_indices, good_indices))}')
 
 random_decay_indices_significant_assignment = np.intersect1d(random_decay_indices, good_indices)
-combined_decay_indices_significant_assignment = np.intersect1d(combined_decay_indices, good_indices)
+combined_decay_indices_significant_assignment = np.intersect1d(combined_decay_indices, good_indices) """
+# %%
+
+
+
 
 # %%
-print(f'Number of assigned random decayed samples with closest clusters: \
-      \n{len(random_decay_indices_significant_assignment)}')
+""" print(f'Number of assigned random decayed samples with closest clusters: \
+      \n{len(random_decay_indices_significant_assignment)}') """
 #print(captions[random_decay_indices_significant_assignment])
 # %%
 #k = 8
 #print(f'{good_indice_dict[good_indices[8]]}')
 #diclist_close_k[decayed_interest_dict[good_indices[8]]]
 #print(f'caption: {captions[good_indices[k]]}')
+# %%
+#print(captions[targeted_decay_groups_significant_assignment[9]])
+# %%
+
+# print the overlaps between the targeted groups
+""" for i in range(len(targeted_decay_groups_significant_assignment)):
+    for j in range(i+1, len(targeted_decay_groups_significant_assignment)):
+        overlap = np.intersect1d(targeted_decay_groups_significant_assignment[i],
+                                    targeted_decay_groups_significant_assignment[j])
+        overlap = overlap.tolist()
+        if len(overlap) > 0:
+            print(f'Overlap between targeted groups {i} and {j}: {overlap}')
+        for k in overlap:
+            print(f'caption {k}: {captions[k]}') """
+# %%
+relevant_captions = captions[good_indices]
+# %%
+relevant_dataset_embeddings = dataset_embeddings[good_indices]
+n_clusters = 10
+kmeans_fitter =  MiniBatchKMeans(n_clusters=n_clusters, batch_size=256 * 2, verbose=0, n_init=5, max_iter=500, random_state=42)
+kmeans = kmeans_fitter.fit(relevant_dataset_embeddings)
+relevant_cluster_centers = kmeans.cluster_centers_
+relevant_dot_products, relevant_distances = dot_products_distances(relevant_dataset_embeddings, relevant_cluster_centers)
+relevant_cluster_assignments = np.argmax(relevant_dot_products, axis=1)
+relevant_cluster_counts = Counter(relevant_cluster_assignments)
+# %%
+for i in range(n_clusters):
+    print(f'# of samples in cluster {i}: {relevant_cluster_counts[i]}')
+# %%
+for i in range(n_clusters):
+    print(relevant_captions[relevant_cluster_assignments==i][:10])
+# %%
+relevant_dataset_embeddings = dataset_embeddings[good_indices]
+n_clusters = 100
+km = kmeans_core(k=n_clusters, data_array=relevant_dataset_embeddings, batch_size=256 * 16, epochs=200, all_cuda=True)
+print("Starting torch k-means")
+km.run()
+relevant_cluster_centers = km.cent.cpu().numpy()
+# %%
+relevant_dot_products, relevant_distances = dot_products_distances(relevant_dataset_embeddings, relevant_cluster_centers)
+relevant_cluster_assignments = np.argmax(relevant_dot_products, axis=1)
+relevant_cluster_counts = Counter(relevant_cluster_assignments)
+# %%
+for i in range(n_clusters):
+    print(f'# of samples in cluster {i}: {relevant_cluster_counts[i]}')
+# %%
+for i in range(n_clusters):
+    print(relevant_captions[relevant_cluster_assignments==i][:10])
+# %%
+cluster_captions = [str(relevant_captions[relevant_cluster_assignments==i][:10]) for i in range(n_clusters)]
+# %%
+# save the cluster captions to a json file
+cluster_captions_path = os.path.join(args.result_folder, 'cluster_captions.json')
+with open(cluster_captions_path, 'w') as fout:
+    json.dump(cluster_captions, fout)
 # %%
