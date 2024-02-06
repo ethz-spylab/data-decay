@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from utils_new import find_matching_labels_and_clusters
+import json
 
 # Add argument class to the args using --dataset_embeddings_path /data/cc3m/cc3m_2023/embeddings/text_embeddings_L14.npy --labels_path /data/cc3m/imagenet_classes.txt --label_embeddings_path /data/cc3m/cc3m_2023/embeddings/imagenet_class_embeddings_L14.npy --decayed_indices_path /data/cc3m/decayed_indices.txt --clusters_folder /data/cc3m/script_tests/clusters/
 
@@ -13,7 +14,8 @@ class Args():
         self.dataset_embeddings_path = '/data/cc3m/cc3m_2023/embeddings/text_embeddings_L14.npy'
         self.labels_path = '/data/cc3m/imagenet_classes.txt'
         self.label_embeddings_path = '/data/cc3m/cc3m_2023/embeddings/imagenet_class_embeddings_L14.npy'
-        self.decayed_indices_path = '/data/cc3m/decayed_indices.txt'
+        #self.decayed_indices_path = '/data/cc3m/decayed_indices.txt'
+        self.decayed_indices_path = '/data/cc3m/script_tests/decayed_indices/combined_decayed_indices.txt'
         self.clusters_folder = '/data/cc3m/script_tests/clusters/'
         self.similarity_type = 'dot_products'
         self.sample_count_threshold = 1000
@@ -101,9 +103,13 @@ if args.verbose:
 # Load the list of decayed indices
 decayed_indices_path = args.decayed_indices_path
 decayed_indices = []
-with open(decayed_indices_path, "r") as f:
+
+""" with open(decayed_indices_path, "r") as f:
     for line in f:
-        decayed_indices.append(int(line.strip()))
+        decayed_indices.append(int(line.strip())) """
+
+with open(decayed_indices_path, "r") as f:
+    decayed_indices = json.load(f)
 
 # Load the dataset embeddings
 if args.verbose:
@@ -140,3 +146,9 @@ _, _ = find_matching_labels_and_clusters(cluster_assignment,
 # %%
 
 # kodu terminalden calistirirken bar hata veriyor, onu coz. ek olarak plotlari kaydetmek icin bir yol bul
+
+# %%
+import json
+with open(decayed_indices_path, "r") as f:
+    decayed_indices = json.load(f)
+# %%

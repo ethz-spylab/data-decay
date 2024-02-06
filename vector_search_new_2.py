@@ -147,8 +147,8 @@ decayed_nearby_count = args.nearby_sample_count_threshold_decayed
 """ similarity_to_existing_samples_threshold = args.similarity_to_existing_samples_threshold
 similarity_to_decayed_samples_lower_threshold = args.similarity_to_decayed_samples_lower_threshold """
 
-similarity_to_existing_samples_threshold = 0.6
-similarity_to_decayed_samples_lower_threshold = 0.7
+similarity_to_existing_samples_threshold = 0.8
+similarity_to_decayed_samples_lower_threshold = 0.8
 
 existing_similarities = [diclist[x]['exist_scores'][exist_nearby_count - 1] for x in range(len(diclist))]
 decayed_similarities = [diclist[x]['decayed_scores'][decayed_nearby_count - 1] for x in range(len(diclist))]
@@ -195,4 +195,6 @@ k = 8
 print(f'{good_indice_dict[good_indices[8]]}')
 #diclist_close_k[decayed_interest_dict[good_indices[8]]]
 print(f'caption: {captions[good_indices[k]]}')
+# %%
+np.sum(existing_check)
 # %%

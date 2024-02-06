@@ -231,7 +231,13 @@ for i in tqdm(range(len(decayed_of_interest))):
     diclist_close_k[i]['similar_decayed_close_k'] = similar_decayed_close_k[temp_decayed_inds].tolist()
 # %%
 exist_scores_close_k = [diclist_close_k[x]['exist_scores_close_k'][-1] for x in range(len(diclist_close_k))]
-decayed_scores_close_k = [diclist_close_k[x]['decayed_scores_close_k'][2] for x in range(len(diclist_close_k))]
+decayed_scores_close_k = [diclist_close_k[x]['decayed_scores_close_k'][-1] for x in range(len(diclist_close_k))]
+
+
+# decayed_scores_close_k = [diclist_close_k[x]['decayed_scores_close_k'][2] for x in range(len(diclist_close_k))]
+# or stuff like that might be helpful
+
+
 
 existing_check = np.array(exist_scores_close_k) < similarity_to_existing_samples_threshold
 decayed_check = np.array(decayed_scores_close_k) > similarity_to_decayed_samples_lower_threshold

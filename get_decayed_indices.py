@@ -68,7 +68,9 @@ text = ["This is a basketball player",
         "This is a bathroom",
         #"This is a lion",
         #"This is a tiger",
-        "This is a zebra"]
+        "This is a zebra",
+        "This is a birthday cake",
+        "This is a groom and bride dancing"]
 inputs = processor(text=text, return_tensors="pt", padding=True,truncation=True).to(device)
 with torch.no_grad():
     outputs = model.text_model(**inputs)
@@ -198,4 +200,6 @@ for i in range(len(text)):
     print(f'# of decayed: {dec}, \
         \n# of total: {ex+dec}, \
         \n% of decayed: {dec/(ex+dec)*100:.2f}')
+# %%
+captions[decayed_samples[-1][:10]]
 # %%
