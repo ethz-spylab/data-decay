@@ -52,7 +52,7 @@ if args.verbose:
 # %%
 targeted_decay_size = round(dataset_size * args.ratio_of_targeted_decayed_samples * 0.1)
 # %%
-text = ["This is a basketball player",
+""" text = ["This is a basketball player",
         "This is a laptop",
         "This is a dog",
         "This is a musician playing guitar",
@@ -70,7 +70,8 @@ text = ["This is a basketball player",
         #"This is a tiger",
         "This is a zebra",
         "This is a birthday cake",
-        "This is a groom and bride dancing"]
+        "This is a groom and bride dancing"] """
+text = ["This is a basketball player"]
 inputs = processor(text=text, return_tensors="pt", padding=True,truncation=True).to(device)
 with torch.no_grad():
     outputs = model.text_model(**inputs)

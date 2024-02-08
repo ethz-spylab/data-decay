@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 
 captions_embedding_path = Path("/data/cc3m/cc3m_2023/embeddings/text_embeddings_L14.npy")
 decayed_indices_path = Path('/data/cc3m/script_tests/decayed_indices/combined_decayed_indices.txt')
-decayed_indices_path = Path('/data/cc3m/decayed_indices.txt')
+decayed_indices_path = Path('/data/cc3m/decayed_indices.json')
 
 dotenv.load_dotenv()
 
@@ -107,6 +107,7 @@ dataset_embeddings_path = captions_embedding_path
 dataset_embeddings = np.load(dataset_embeddings_path)
 # %%
 text =["This is " + x for x in combined_results]
+#text = ["baseball player hits a double during the first"]
 inputs = processor(text=text, return_tensors="pt", padding=True,truncation=True).to(device)
 with torch.no_grad():
     outputs = model.text_model(**inputs)
@@ -118,13 +119,13 @@ text_embeds = text_embeds.cpu().numpy().astype('float32')
 txt_vs_embeddings = text_embeds @ dataset_embeddings.T
 # %%
 
-""" with open(decayed_indices_path, "r") as f:
-    decayed_indices = json.load(f) """
+with open(decayed_indices_path, "r") as f:
+    decayed_indices = json.load(f)
 
-decayed_indices = []
+""" decayed_indices = []
 with open(decayed_indices_path, "r") as f:
     for line in f:
-        decayed_indices.append(int(line.strip()))
+        decayed_indices.append(int(line.strip())) """
 
 decayed_array = np.zeros(len(dataset_embeddings))
 decayed_array[decayed_indices] = 1
