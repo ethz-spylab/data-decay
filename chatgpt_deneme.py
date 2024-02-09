@@ -14,14 +14,18 @@ import matplotlib.pyplot as plt
 captions_embedding_path = Path("/data/cc3m/cc3m_2023/embeddings/text_embeddings_L14.npy")
 decayed_indices_path = Path('/data/cc3m/script_tests/decayed_indices/combined_decayed_indices.txt')
 decayed_indices_path = Path('/data/cc3m/decayed_indices.json')
+generated_captions_path = Path('/data/cc3m/script_tests/results/generated_captions.json')
 
 dotenv.load_dotenv()
 
 client = OpenAI()
 
+# %%
 cluster_captions_path = os.path.join('/data/cc3m/script_tests/results/', 'cluster_captions.json')
 with open(cluster_captions_path, "r") as f:
     cluster_captions = json.load(f)
+
+print(f"Number of clusters: {len(cluster_captions)}")
 # %%
 step = 300
 results = []
@@ -95,6 +99,9 @@ for i,relevant_captions in enumerate(cluster_captions):
     results.append(result)
     print()
 # %%
+with open(generated_captions_path, "w") as f:
+    json.dump(results, f)
+# %%    
 combined_results = results.copy()
 combined_results = [item for sublist in combined_results for item in sublist]
 # %%
@@ -130,25 +137,30 @@ with open(decayed_indices_path, "r") as f:
 decayed_array = np.zeros(len(dataset_embeddings))
 decayed_array[decayed_indices] = 1
 
-decayed_txt_vs_embeddings = txt_vs_embeddings[:,decayed_array==1]
-existing_txt_vs_embeddings = txt_vs_embeddings[:,decayed_array==0]
+print(f"Decayed and existing captions")
+
 # %%
 for i in range(len(text)):
 
     txt = i
     th = 0.5
-    plt.hist(decayed_txt_vs_embeddings[txt], bins=np.linspace(th,1,int((1-th)*50)+1),alpha=0.6)
-    plt.hist(existing_txt_vs_embeddings[txt], bins=np.linspace(th,1,int((1-th)*50)+1),alpha=0.6)
+    decayed_txt_vs_embeddings = txt_vs_embeddings[txt,decayed_array==1]
+    existing_txt_vs_embeddings = txt_vs_embeddings[txt,decayed_array==0]
+    plt.hist(decayed_txt_vs_embeddings, bins=np.linspace(th,1,int((1-th)*50)+1),alpha=0.6)
+    plt.hist(existing_txt_vs_embeddings, bins=np.linspace(th,1,int((1-th)*50)+1),alpha=0.6)
     plt.legend(["Decayed", "Existing"])
     plt.xlabel("Similarity score")
     plt.ylabel("Count")
     plt.title("\""+text[txt]+"\""+" vs captions")
     plt.show()
 
-    dec = np.sum(decayed_txt_vs_embeddings[txt] > th)
-    ex = np.sum(existing_txt_vs_embeddings[txt] > th)
+    dec = np.sum(decayed_txt_vs_embeddings > th)
+    ex = np.sum(existing_txt_vs_embeddings > th)
     print(i)
     print(f'# of decayed: {dec}, \
         \n# of total: {ex+dec}, \
         \n% of decayed: {dec/(ex+dec)*100:.2f}')
+# %%
+with open(generated_captions_path, "r") as f:
+    results = json.load(f)
 # %%

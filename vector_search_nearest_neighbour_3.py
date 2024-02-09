@@ -22,7 +22,7 @@ class Args:
         self.separate_decayed_indices_path = '/data/cc3m/script_tests/decayed_indices/decayed_indices.txt'
         self.clusters_folder = '/data/cc3m/script_tests/clusters/'
         self.decayed_samples_dict_nn_path = '/data/cc3m/script_tests/diclist_nn.json'
-        self.decayed_dict_calculate = True
+        self.decayed_dict_calculate = False
         self.consider_nns = True
         self.similarity_type = 'dot_products'
         self.captions_urls_path = "/data/cc3m/cc3m_2023/Train_GCC-training.tsv"
@@ -34,7 +34,6 @@ class Args:
         self.lower_similarity_threshold = 0.8
         self.cluster_similartity_threshold = 0.9
         self.cluster_element_threshold = 0
-        self.verbose = 1
 
 args = Args()
 # %%
@@ -352,7 +351,6 @@ while len(rows) > 0:
     np.fill_diagonal(cluster_similarity, 0)
     cluster_similarity = np.tril(cluster_similarity)
 
-    cluster_similartity_threshold = 0.9
     rows, cols = np.where(cluster_similarity > cluster_similartity_threshold)
 
 unique_clusters = np.unique(clusters)
@@ -361,79 +359,23 @@ print(f'Number of clusters: {num_clusters_new}')
 # %%
 counter = Counter(clusters)
 # %%
-# look at ones in counter with count > self.cluster_element_threshold
+# look at clusters with # elements > self.cluster_element_threshold
 cluster_element_threshold = args.cluster_element_threshold
-len([x for x in counter.items() if x[1] > 20])
+relevant_clusters = [x[0] for x in counter.items() if x[1] > cluster_element_threshold]
 # %%
-[x for x in counter.items() if x[1] < 17]
+# find the captions of the good_indices in those clusters
+final_indices = [np.array(good_indices)[clusters==x] for x in relevant_clusters]
+final_captions = [captions[x].tolist() for x in final_indices]
 # %%
-for i in np.array(good_indices)[clusters==226]:
-    if i in orig_good_indices_dict:
-        print(i)
+""" for i, x in enumerate(final_captions):
+    print(f'Cluster {i}')
+    print(x[:3])
+    print('\n') """
 # %%
-diclist_orig_good_ones[orig_good_indices_dict[1816266]]
+# save the cluster captions to a json file
+final_captions_path = os.path.join(args.result_folder, 'cluster_captions.json')
+with open(final_captions_path, 'w') as fout:
+    json.dump(final_captions, fout)
 # %%
-len(diclist_nn[decayed_dict[207]]['nn_scores'])
-# %%
-diclist_nn[decayed_dict[207]]['nn_indices']
-# %%
-counter.most_common(20)
-# %%
-captions[np.array(good_indices)[clusters==29775][:10]]
-# %%
-# find the number of unique values in the clusters
-len(np.unique(clusters))
-# %%
-np.array(good_indices)[clusters==23].tolist()
-# %%
-diclist_good_ones[good_indices_dict[np.array(good_indices)[clusters==999].tolist()[0]]]
-# %%
-diclist_good_ones[good_indices_dict[1763701]]
-# %%
-print(f'55608: {clusters[good_indices_dict[55608]]}')
-clusters[good_indices_dict[1763701]]
-# %%
-good_indices_dict[1763701]
-# %%
-if 1763701 in good_indices_dict:
-    print('yes')
-# %%
-diclist_good_ones[0]
-# %%
-# find neighbors for each decayed element
-all_neighbors_dict = {}
-for i in tqdm(range(len(diclist_good_ones))):
-    all_neighbors_dict[good_indices[i]] = diclist_good_ones[i]['decayed_nn_indices']
-    for nearby in diclist_good_ones[i]['decayed_nn_indices']:
-        if nearby in all_neighbors_dict:
-            all_neighbors_dict[nearby].append(good_indices[i])
-        else:
-            all_neighbors_dict[nearby] = [good_indices[i]]
-# %%
-all_neighbors_dict
-# %%
-print("hi")
-# %%
-np.array(good_indices)[clusters==29501]
-# %%
-diclist_nn_close_k[decayed_interest_dict[3283665]]['nn_indices_close_k']
-# %%
-diclist_nn[decayed_dict[decayed_ind]]['nn_indices']
-# %%
-captions[diclist_nn_close_k[decayed_interest_dict[3283665]]['nn_indices_close_k']]
-# %%
-116762 in good_indices
-# %%
-for i in range(3, 0, -1):
-    print(i)
-# %%
-a = np.array([1,2,3,4,5])
-for b,i in enumerate(a):
-    print(b,i)
-# %%
-a = np.array([1,2,3,4,5])
-np.where(a==2)
-b = np.delete(a, np.where(a==2))
-# %%
-b
+len(final_captions[57])
 # %%

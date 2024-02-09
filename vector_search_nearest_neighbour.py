@@ -437,7 +437,3 @@ with open(cluster_captions_path, 'w') as fout:
     with open(cluster_captions_path, 'w') as fout:
         fout.write(cluster_captions[i]) """
 # %%
-cluster_captions.tolist()
-# %%
-print(relevant_captions[relevant_cluster_assignments==32][:10])
-# %%
