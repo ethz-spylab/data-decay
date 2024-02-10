@@ -21,7 +21,7 @@ class Args:
         self.decayed_indices_path = '/data/cc3m/decayed_indices.json'
         self.clusters_folder = '/data/cc3m/script_tests/clusters/'
         self.decayed_samples_dict_nn_path = '/data/cc3m/script_tests/diclist_nn.json'
-        self.decayed_dict_calculate = False
+        self.decayed_dict_calculate = True
         self.consider_nns = True
         self.similarity_type = 'dot_products'
         self.captions_urls_path = "/data/cc3m/cc3m_2023/Train_GCC-training.tsv"
@@ -361,6 +361,9 @@ relevant_clusters = [x[0] for x in counter.items() if x[1] > cluster_element_thr
 # find the captions of the good_indices in those clusters
 final_indices = [np.array(good_indices)[clusters==x] for x in relevant_clusters]
 final_captions = [captions[x].tolist() for x in final_indices]
+
+print(f'Number of clusters with more than {cluster_element_threshold} elements: {len(relevant_clusters)}')
+print(f'Number of good_indices: {len(good_indices)}')
 # %%
 for i, x in enumerate(final_captions):
     print(f'Cluster {i}')
