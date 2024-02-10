@@ -17,8 +17,8 @@ from utils_new import get_top_n_indices, dot_products_distances
 class Args:
     def __init__(self):
         self.dataset_embeddings_path = "/data/cc3m/cc3m_2023/embeddings/text_embeddings_L14.npy"
-        #self.decayed_indices_path = '/data/cc3m/script_tests/decayed_indices/combined_decayed_indices.txt'
-        self.decayed_indices_path = '/data/cc3m/decayed_indices.json'
+        self.decayed_indices_path = '/data/cc3m/script_tests/decayed_indices/combined_decayed_indices.txt'
+        #self.decayed_indices_path = '/data/cc3m/decayed_indices.json'
         self.separate_decayed_indices_path = '/data/cc3m/script_tests/decayed_indices/decayed_indices.txt'
         self.clusters_folder = '/data/cc3m/script_tests/clusters/'
         self.decayed_samples_dict_nn_path = '/data/cc3m/script_tests/diclist_nn.json'
@@ -28,12 +28,13 @@ class Args:
         self.captions_urls_path = "/data/cc3m/cc3m_2023/Train_GCC-training.tsv"
         self.result_folder = '/data/cc3m/script_tests/results/'
         self.nearby_sample_count = 20
-        self.nearby_decayed_sample_count_threshold = 16
+        self.nearby_decayed_sample_count_threshold = 12
         self.closest_clusters_count = 0
         self.check_similarity = True
         self.lower_similarity_threshold = 0.8
-        self.cluster_similartity_threshold = 0.9
+        self.cluster_similartity_threshold = 0.8
         self.cluster_element_threshold = 0
+        self.verbose = True
 
 args = Args()
 # %%
@@ -367,15 +368,14 @@ relevant_clusters = [x[0] for x in counter.items() if x[1] > cluster_element_thr
 final_indices = [np.array(good_indices)[clusters==x] for x in relevant_clusters]
 final_captions = [captions[x].tolist() for x in final_indices]
 # %%
-""" for i, x in enumerate(final_captions):
+for i, x in enumerate(final_captions):
     print(f'Cluster {i}')
-    print(x[:3])
-    print('\n') """
+    print(x[:10])
+    print('\n')
 # %%
 # save the cluster captions to a json file
 final_captions_path = os.path.join(args.result_folder, 'cluster_captions.json')
 with open(final_captions_path, 'w') as fout:
     json.dump(final_captions, fout)
 # %%
-len(final_captions[57])
-# %%
+
