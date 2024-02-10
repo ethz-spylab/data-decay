@@ -19,7 +19,6 @@ class Args:
         self.dataset_embeddings_path = "/data/cc3m/cc3m_2023/embeddings/text_embeddings_L14.npy"
         #self.decayed_indices_path = '/data/cc3m/script_tests/decayed_indices/combined_decayed_indices.txt'
         self.decayed_indices_path = '/data/cc3m/decayed_indices.json'
-        self.separate_decayed_indices_path = '/data/cc3m/script_tests/decayed_indices/decayed_indices.txt'
         self.clusters_folder = '/data/cc3m/script_tests/clusters/'
         self.decayed_samples_dict_nn_path = '/data/cc3m/script_tests/diclist_nn.json'
         self.decayed_dict_calculate = False
@@ -28,12 +27,13 @@ class Args:
         self.captions_urls_path = "/data/cc3m/cc3m_2023/Train_GCC-training.tsv"
         self.result_folder = '/data/cc3m/script_tests/results/'
         self.nearby_sample_count = 20
-        self.nearby_decayed_sample_count_threshold = 16
+        self.nearby_decayed_sample_count_threshold = 12
         self.closest_clusters_count = 0
         self.check_similarity = True
         self.lower_similarity_threshold = 0.8
-        self.num_clusters = 50
-        self.verbose = 1
+        self.cluster_similartity_threshold = 0.8
+        self.cluster_element_threshold = 0
+        self.verbose = True
 
 args = Args()
 # %%
@@ -59,12 +59,6 @@ decayed_indices_path = args.decayed_indices_path
 with open(decayed_indices_path, "r") as f:
     decayed_indices = json.load(f)
 
-""" decayed_indices_path = args.decayed_indices_path
-decayed_indices = []
-with open(decayed_indices_path, "r") as f:
-    for line in f:
-        decayed_indices.append(int(line.strip())) """
-
 decayed_indices_size = len(decayed_indices)
 if args.verbose:
     print(f'Number of decayed indices: {decayed_indices_size}')
@@ -72,12 +66,7 @@ if args.verbose:
 decayed_array = np.zeros(dataset_size)
 decayed_array[decayed_indices] = 1
 
-separate_decayed_indices_path = args.separate_decayed_indices_path
-with open(separate_decayed_indices_path, "r") as f:
-    separate_decayed_indices = json.load(f)
 
-targeted_decay_indices = np.array([np.array(x) for x in separate_decayed_indices[:-1]])
-random_decay_indices = np.array(separate_decayed_indices[-1])
 combined_decay_indices = np.array(decayed_indices)
 
 # Load the cluster centers, distances, and similarities
@@ -140,8 +129,12 @@ else:
         temp = dataset_embeddings[clusters_decayed[i]] @ dataset_embeddings[clusters_all[i]].T
         for j in range(len(clusters_decayed[i])):
             decayed_ind = clusters_decayed[i][j]
-            similar_inds = get_top_n_indices(temp[j], nearby_sample_count + 1)[1:]
+            similar_inds = get_top_n_indices(temp[j], nearby_sample_count + 1)
             nn_decayed_inds = clusters_all[i][similar_inds]
+
+            similar_inds = np.delete(similar_inds, np.where(nn_decayed_inds == decayed_ind))
+            nn_decayed_inds = np.delete(nn_decayed_inds, np.where(nn_decayed_inds == decayed_ind))
+            
             diclist_nn[decayed_dict[decayed_ind]]['nn_indices'] = nn_decayed_inds.tolist()
             diclist_nn[decayed_dict[decayed_ind]]['nn_decayed_count'] = int(decayed_array[nn_decayed_inds].sum())
             diclist_nn[decayed_dict[decayed_ind]]['nn_scores'] = temp[j][similar_inds].tolist()
@@ -217,6 +210,7 @@ for i in tqdm(range(len(decayed_of_interest))):
 nn_decayed_counts = [diclist_nn_close_k[x]['nn_decayed_count_close_k'] for x in range(len(diclist_nn_close_k))]
 
 # %%
+# Apply thresholds for # decayed samples nearby and minimum similarity
 check = np.array(nn_decayed_counts) >= args.nearby_decayed_sample_count_threshold
 
 if args.check_similarity:
@@ -235,10 +229,23 @@ if args.check_similarity:
     check = check & check2
 
 good_ones = np.where(check)[0]
-good_indices = [diclist_nn_close_k[x]['decayed_indice'] for x in good_ones]
+orig_good_indices = [diclist_nn_close_k[x]['decayed_indice'] for x in good_ones]
+
+orig_good_indices_dict = {}
+for i in range(len(orig_good_indices)):
+    orig_good_indices_dict[orig_good_indices[i]] = i
 
 print(f'Number of good ones: {len(good_ones)}')
-print(f'Number of good indices, pre-filter for decayed: {len(good_indices)}')
+print(f'Number of good indices, pre-filter for decayed: {len(orig_good_indices)}')
+
+good_indices = orig_good_indices.copy()
+if args.consider_nns:
+    print("Considering the neighbours")
+    good_indices_neighbours = []
+    for i in good_ones:
+        good_indices_neighbours.extend(diclist_nn_close_k[i]['nn_indices_close_k'])
+    good_indices.extend(good_indices_neighbours)
+    good_indices = np.unique(good_indices).tolist()
 
 # remove the non-decayed samples from the good_indices
 good_indices = np.array(good_indices)
@@ -246,14 +253,36 @@ good_indices = good_indices[decayed_array[good_indices]==1].tolist()
 
 print(f'Number of good indices, post-filter for decayed: {len(good_indices)}')
 # %%
-diclist_good_ones = [diclist_nn_close_k[x].copy() for x in good_ones]
+diclist_orig_good_ones = [diclist_nn_close_k[x].copy() for x in good_ones]
 # %%
-for i in range(len(diclist_good_ones)):
-    diclist_good_ones[i]['decayed_nn_indices'] = [x for x in diclist_good_ones[i]['nn_indices_close_k'] if decayed_array[x]==1]
+for i in range(len(diclist_orig_good_ones)):
+    diclist_orig_good_ones[i]['decayed_nn_indices'] = [x for x in diclist_orig_good_ones[i]['nn_indices_close_k'] if decayed_array[x]==1]
 # %%
 good_indices_dict = {}
 for i in range(len(good_indices)):
     good_indices_dict[good_indices[i]] = i
+
+# %%
+diclist_good_ones = {}
+for good_indice in good_indices:
+    diclist_good_ones[good_indice] = []
+
+for i, orig_good_indice in enumerate(orig_good_indices):
+    diclist_good_ones[orig_good_indice] = diclist_orig_good_ones[i]['decayed_nn_indices']
+    to_dos = diclist_orig_good_ones[i]['decayed_nn_indices']
+    for to_do in to_dos:
+        if to_do not in orig_good_indices_dict:
+            diclist_good_ones[to_do].append(orig_good_indice)
+
+# %%
+# orig_good_indices are the decayed samples that fulfill the conditions
+# good_indices are the decayed samples that fulfill the conditions and their decayed neighbours
+# good_indices_dict is a dictionary that maps the good_indices to their indices in good_indices
+# diclist_good_ones is a dictionary that maps the good_indices to their decayed neighbours
+# diclist_orig_good_ones is the original dic_list for orig_good_indices
+# orig_good_indices_dict is a dictionary that maps the orig_good_indices to their indices in orig_good_indices
+# %%
+diclist_good_ones_s = {k: v for k, v in sorted(diclist_good_ones.items(), key=lambda item: len(item[1]), reverse=False)}
 # %%
 # The problem is sometimes while one sample is in the nn_indices_close_k of another, the other is not in the nn_indices_close_k of the first
 clusters = np.ones(len(good_indices), dtype=int)*-1
@@ -263,126 +292,84 @@ for i in range(len(good_indices)):
         continue
     clusters[i] = cluster_counter
     to_dos = []
-    to_dos.extend(diclist_good_ones[i]['decayed_nn_indices'])
+    to_dos.extend(diclist_good_ones[good_indices[i]])
     while len(to_dos) > 0:
         temp_indice = to_dos.pop()
         if temp_indice in good_indices_dict:
             temp_indice_pos = good_indices_dict[temp_indice]
             if clusters[temp_indice_pos] == -1:
                 clusters[temp_indice_pos] = cluster_counter
-                to_dos.extend(diclist_good_ones[temp_indice_pos]['decayed_nn_indices'])
+                to_dos.extend(diclist_good_ones[temp_indice])
             elif clusters[temp_indice_pos] != cluster_counter:
                 old_cluster_count = clusters[temp_indice_pos]
                 clusters[clusters==old_cluster_count] = cluster_counter
     
     cluster_counter += 1
 # %%
-# if two good decayed samples are connected via their decayed_nn_indices, they are in the same cluster
-num_clusters = len(np.unique(clusters))
-cluster_equivalents = [[] for _ in range(num_clusters)]
-nn_to_good_indices = {}
-for i in range(len(good_indices)):
-    to_dos = diclist_good_ones[i]['decayed_nn_indices']
-    for j in range(len(to_dos)):
-        if to_dos[j] in nn_to_good_indices:
-            if clusters[i] not in nn_to_good_indices[to_dos[j]]:
-                nn_to_good_indices[to_dos[j]].append(clusters[i])
-        else:
-            nn_to_good_indices[to_dos[j]] = [clusters[i]]
-# %%
-# order nn_to_good_indices by the length of its values
-nn_to_good_indices = {k: v for k, v in sorted(nn_to_good_indices.items(), key=lambda item: len(item[1]), reverse=True)}
-# %%
-matches = [v for k, v in nn_to_good_indices.items() if len(v) > 1]
-for match in matches:
-    for j in range(len(match)-1):
-        clusters[clusters==match[j]] = match[j+1]
-# %%
-unique_clusters = np.unique(clusters)
-num_clusters_2 = len(unique_clusters)
-# %%
-clusters
-# %%
 # find the cluster centers and combine the clusters that are too close to each other
 # unique_clusters is already sorted
-good_dataset_embeddings = dataset_embeddings[np.array(good_indices)]
-cluster_centers = np.zeros((num_clusters_2, good_dataset_embeddings.shape[1]))
-for i in range(num_clusters_2):
-    cluster_centers[i] = np.average(good_dataset_embeddings[clusters == unique_clusters[i]], axis=0)
-    cluster_centers[i] = cluster_centers[i]/np.linalg.norm(cluster_centers[i])
-# %%
 # find the cosine similarity between the cluster centers. put 0 for the diagonal
 # put 0's for upper triangular part
+
+good_dataset_embeddings = dataset_embeddings[np.array(good_indices)]
+
+unique_clusters = np.unique(clusters)
+num_clusters_new = len(unique_clusters)
+cluster_centers = np.zeros((num_clusters_new, good_dataset_embeddings.shape[1]))
+for i in range(num_clusters_new):
+    cluster_centers[i] = np.average(good_dataset_embeddings[clusters == unique_clusters[i]], axis=0)
+    cluster_centers[i] = cluster_centers[i]/np.linalg.norm(cluster_centers[i])
+
 cluster_similarity = cluster_centers @ cluster_centers.T
 np.fill_diagonal(cluster_similarity, 0)
 cluster_similarity = np.tril(cluster_similarity)
-# %%
-rows, cols = np.where(cluster_similarity > 0.8)
-print(len(np.unique(rows)))
-# %%
-captions[np.array(good_indices)[clusters==unique_clusters[rows[43]]][:10]]
-# %%
-captions[np.array(good_indices)[clusters==unique_clusters[cols[43]]][:10]]
-# %%
-cluster_similartity_threshold = 0.8
-for i in range(num_clusters_2 - 1, 0, -1):
-    temp_sim = cluster_similarity[i,:]
-    am = np.argmax(temp_sim)
-    if temp_sim[am] > cluster_similartity_threshold:
-        clusters[clusters==unique_clusters[i]] = unique_clusters[am]
+
+cluster_similartity_threshold = args.cluster_similartity_threshold
+rows, cols = np.where(cluster_similarity > cluster_similartity_threshold)
+
+while len(rows) > 0:
+
+    for i in range(num_clusters_new - 1, 0, -1):
+        temp_sim = cluster_similarity[i,:]
+        am = np.argmax(temp_sim)
+        if temp_sim[am] > cluster_similartity_threshold:
+            clusters[clusters==unique_clusters[i]] = unique_clusters[am]
+
+    unique_clusters = np.unique(clusters)
+    num_clusters_new = len(unique_clusters)
+    cluster_centers = np.zeros((num_clusters_new, good_dataset_embeddings.shape[1]))
+    for i in range(num_clusters_new):
+        cluster_centers[i] = np.average(good_dataset_embeddings[clusters == unique_clusters[i]], axis=0)
+        cluster_centers[i] = cluster_centers[i]/np.linalg.norm(cluster_centers[i])
+
+    cluster_similarity = cluster_centers @ cluster_centers.T
+    np.fill_diagonal(cluster_similarity, 0)
+    cluster_similarity = np.tril(cluster_similarity)
+
+    rows, cols = np.where(cluster_similarity > cluster_similartity_threshold)
+
+unique_clusters = np.unique(clusters)
+num_clusters_new = len(unique_clusters)
+print(f'Number of clusters: {num_clusters_new}')
 # %%
 counter = Counter(clusters)
 # %%
-counter
+# look at clusters with # elements > self.cluster_element_threshold
+cluster_element_threshold = args.cluster_element_threshold
+relevant_clusters = [x[0] for x in counter.items() if x[1] > cluster_element_threshold]
 # %%
-# look at ones in counter with count > 10
-len([x for x in counter.items() if x[1] > 20])
+# find the captions of the good_indices in those clusters
+final_indices = [np.array(good_indices)[clusters==x] for x in relevant_clusters]
+final_captions = [captions[x].tolist() for x in final_indices]
 # %%
-counter.most_common(20)
+for i, x in enumerate(final_captions):
+    print(f'Cluster {i}')
+    print(x[:10])
+    print('\n')
 # %%
-captions[np.array(good_indices)[clusters==29775][:10]]
+# save the cluster captions to a json file
+final_captions_path = os.path.join(args.result_folder, 'cluster_captions.json')
+with open(final_captions_path, 'w') as fout:
+    json.dump(final_captions, fout)
 # %%
-# find the number of unique values in the clusters
-len(np.unique(clusters))
-# %%
-np.array(good_indices)[clusters==23].tolist()
-# %%
-diclist_good_ones[good_indices_dict[np.array(good_indices)[clusters==999].tolist()[0]]]
-# %%
-diclist_good_ones[good_indices_dict[1763701]]
-# %%
-print(f'55608: {clusters[good_indices_dict[55608]]}')
-clusters[good_indices_dict[1763701]]
-# %%
-good_indices_dict[1763701]
-# %%
-if 1763701 in good_indices_dict:
-    print('yes')
-# %%
-diclist_good_ones[0]
-# %%
-# find neighbors for each decayed element
-all_neighbors_dict = {}
-for i in tqdm(range(len(diclist_good_ones))):
-    all_neighbors_dict[good_indices[i]] = diclist_good_ones[i]['decayed_nn_indices']
-    for nearby in diclist_good_ones[i]['decayed_nn_indices']:
-        if nearby in all_neighbors_dict:
-            all_neighbors_dict[nearby].append(good_indices[i])
-        else:
-            all_neighbors_dict[nearby] = [good_indices[i]]
-# %%
-all_neighbors_dict
-# %%
-print("hi")
-# %%
-np.array(good_indices)[clusters==29501]
-# %%
-diclist_nn_close_k[decayed_interest_dict[3283665]]['nn_indices_close_k']
-# %%
-captions[diclist_nn_close_k[decayed_interest_dict[3283665]]['nn_indices_close_k']]
-# %%
-116762 in good_indices
-# %%
-for i in range(3, 0, -1):
-    print(i)
-# %%
+

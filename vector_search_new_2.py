@@ -17,7 +17,6 @@ class Args:
     def __init__(self):
         self.dataset_embeddings_path = "/data/cc3m/cc3m_2023/embeddings/text_embeddings_L14.npy"
         self.decayed_indices_path = '/data/cc3m/script_tests/decayed_indices/combined_decayed_indices.txt'
-        self.separate_decayed_indices_path = '/data/cc3m/script_tests/decayed_indices/decayed_indices.txt'
         self.clusters_folder = '/data/cc3m/script_tests/clusters/'
         self.decayed_samples_dict_path = '/data/cc3m/script_tests/diclist.json'
         self.decayed_dict_calculate = False
@@ -66,10 +65,6 @@ if args.verbose:
 
 decayed_array = np.zeros(dataset_size)
 decayed_array[decayed_indices] = 1
-
-separate_decayed_indices_path = args.separate_decayed_indices_path
-with open(separate_decayed_indices_path, "r") as f:
-    separate_decayed_indices = json.load(f)
 
 # Load the cluster centers, distances, and similarities
 if args.verbose:
@@ -147,8 +142,8 @@ decayed_nearby_count = args.nearby_sample_count_threshold_decayed
 """ similarity_to_existing_samples_threshold = args.similarity_to_existing_samples_threshold
 similarity_to_decayed_samples_lower_threshold = args.similarity_to_decayed_samples_lower_threshold """
 
-similarity_to_existing_samples_threshold = 0.8
-similarity_to_decayed_samples_lower_threshold = 0.8
+similarity_to_existing_samples_threshold = args.similarity_to_existing_samples_threshold
+similarity_to_decayed_samples_lower_threshold = args.similarity_to_decayed_samples_lower_threshold
 
 existing_similarities = [diclist[x]['exist_scores'][exist_nearby_count - 1] for x in range(len(diclist))]
 decayed_similarities = [diclist[x]['decayed_scores'][decayed_nearby_count - 1] for x in range(len(diclist))]
@@ -163,38 +158,10 @@ len(good_indices)
 # %%
 #captions[good_indices]
 # %%
-targeted_decay_indices = np.array([np.array(x) for x in separate_decayed_indices[:-1]])
-random_decay_indices = np.array(separate_decayed_indices[-1])
 combined_decay_indices = np.array(decayed_indices)
 # %%
 good_indice_dict = {}
 for i in range(len(good_indices)):
     good_indice_dict[good_indices[i]] = {'text_assigned':None}
-targeted_decay_groups_significant_assignment = []
-for i in range(len(targeted_decay_indices)):
-    targeted_decay_groups_significant_assignment.append(
-        np.intersect1d(targeted_decay_indices[i], good_indices)
-    )
-    for j in targeted_decay_groups_significant_assignment[i]:
-        good_indice_dict[j]['text_assigned'] = i
-# %%
-sums = [len(x) for x in targeted_decay_groups_significant_assignment]
-sums
-# %%
-random_decay_indices_significant_assignment = np.intersect1d(random_decay_indices, good_indices)
 combined_decay_indices_significant_assignment = np.intersect1d(combined_decay_indices, good_indices)
-# %%
-len(random_decay_indices_significant_assignment)
-# %%
-diclist[decayed_dict[good_indices[0]]]
-# %%
-#her bir decayedin nereye assign oldugunu bul
-
-# %%
-k = 8
-print(f'{good_indice_dict[good_indices[8]]}')
-#diclist_close_k[decayed_interest_dict[good_indices[8]]]
-print(f'caption: {captions[good_indices[k]]}')
-# %%
-np.sum(existing_check)
 # %%

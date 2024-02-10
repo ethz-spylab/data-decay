@@ -50,8 +50,6 @@ dataset_size = dataset_embeddings.shape[0]
 if args.verbose:
     print(f'Number of dataset samples: {dataset_size}')
 # %%
-targeted_decay_size = round(dataset_size * args.ratio_of_targeted_decayed_samples * 0.1)
-# %%
 text = ["This is a basketball player",
         "This is a laptop",
         "This is a dog",
@@ -78,6 +76,9 @@ with torch.no_grad():
 txt_embeds = txt_embeds.cpu().numpy().astype('float32')
 
 txt_vs_embeddings = txt_embeds @ dataset_embeddings.T
+
+targeted_decay_size = round(dataset_size * args.ratio_of_targeted_decayed_samples / len(text))
+print(f'Targeted decay size: {targeted_decay_size}')
 # %%
 for i in range(len(text)):
 
