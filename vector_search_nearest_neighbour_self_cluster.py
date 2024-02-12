@@ -21,7 +21,7 @@ class Args:
         self.decayed_indices_path = '/data/cc3m/decayed_indices.json'
         self.clusters_folder = '/data/cc3m/script_tests/clusters/'
         self.decayed_samples_dict_nn_path = '/data/cc3m/script_tests/diclist_nn.json'
-        self.decayed_dict_calculate = True
+        self.decayed_dict_calculate = False
         self.consider_nns = True
         self.similarity_type = 'dot_products'
         self.captions_urls_path = "/data/cc3m/cc3m_2023/Train_GCC-training.tsv"
@@ -365,14 +365,23 @@ final_captions = [captions[x].tolist() for x in final_indices]
 print(f'Number of clusters with more than {cluster_element_threshold} elements: {len(relevant_clusters)}')
 print(f'Number of good_indices: {len(good_indices)}')
 # %%
+# Find the average similarity captions in a cluster to that cluster's center
+average_similarities = [[] for _ in range(len(relevant_clusters))]
+for i in range(len(relevant_clusters)):
+    cluster_caption_embeddings = dataset_embeddings[final_indices[i]]
+    cluster_center_embedding = np.average(cluster_caption_embeddings, axis=0)
+    cluster_center_embedding /= np.linalg.norm(cluster_center_embedding)
+    within_cluster_sim = cluster_caption_embeddings @ cluster_center_embedding
+    average_similarities[i] = np.average(within_cluster_sim)
+# %%
 for i, x in enumerate(final_captions):
-    print(f'Cluster {i}')
+    print(f'Cluster {i}, # captions: {len(x)}')
+    print(f'Average cosine similarity to cluster center: {average_similarities[i]:.3f}')
     print(x[:10])
     print('\n')
 # %%
 # save the cluster captions to a json file
 final_captions_path = os.path.join(args.result_folder, 'cluster_captions.json')
 with open(final_captions_path, 'w') as fout:
-    json.dump(final_captions, fout)
+    json.dump(final_captions, fout, indent=2)
 # %%
-
