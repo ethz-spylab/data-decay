@@ -378,14 +378,14 @@ def main(args):
                 print(f'group {i}, # captions: {len(x)}')
                 print(f'{len(x)-neighbours_count[i]} fulfilled conditions, {neighbours_count[i]} are decayed neighbours of them')
                 print(f'Average cosine similarity to group center: {average_similarities[i]:.3f}')
-                print(f'Isolation factor {average_decayed_neighbours[i]:.2f}/20')
+                print(f'Isolation factor {average_decayed_neighbours[i]:.2f}/{args.nearby_sample_count}')
                 print(x[:10])
                 print('\n')
         else:
             for i, x in enumerate(final_groups_captions):
                 print(f'group {i}, # captions: {len(x)}')
                 print(f'Average cosine similarity to group center: {average_similarities[i]:.3f}')
-                print(f'Isolation factor {average_decayed_neighbours[i]:.2f}/20')
+                print(f'Isolation factor {average_decayed_neighbours[i]:.2f}/{args.nearby_sample_count}')
                 print(x[:10])
                 print('\n')
     
