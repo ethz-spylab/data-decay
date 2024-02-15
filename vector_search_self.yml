@@ -1,0 +1,53 @@
+# Location of the embeddings we want to search over
+dataset_embeddings_path: "/data/cc3m/cc3m_2023/embeddings/text_embeddings_L14.npy"
+
+# Location of decayed indices
+decayed_indices_path: '/data/cc3m/decayed_indices.json'
+
+# Location of clusters
+clusters_folder: '/data/cc3m/script_tests/clusters/'
+
+# Location of decayed samples dictionary
+decayed_samples_dict_nn_path: '/data/cc3m/script_tests/diclist_nn.json'
+
+# Only need to recalculate decayed samples dictionary if decayed indices or the nearby_sample_count are updated 
+decayed_dict_calculate: False
+
+# True if we want to consider the nearest decayed neighbors of the decayed samples that fulfill the conditions
+consider_nns: True
+
+# Which similarity measure to use distances or dot products
+similarity_type: 'dot_products'
+
+# Location of the captions and urls (for CC3M format. For other formats, please modify the load_captions in utils.py)
+captions_urls_path: "/data/cc3m/cc3m_2023/Train_GCC-training.tsv"
+
+# Where to save the results. Make sure folder exists
+result_folder: '/data/cc3m/script_tests/results/'
+
+# Number of nearest neighbors to consider
+nearby_sample_count: 20
+
+# At least how many of those nearest neighbors should be decayed
+nearby_decayed_sample_count_threshold: 12
+
+# How many other clusters to consider apart from the closest one (from closest to farthest)
+closest_clusters_count: 0
+
+# Checking other clusters for all decayed samples might be costly. We can limit the number of decayed samples to check
+# If nearby_decayed_sample_count_threshold is 12 and closest_cluster_check_threshold is 2, then we will check the samples with at least 10 decayed neighbors
+# in the cluster they are initially assigned to
+closest_cluster_check_threshold: 2
+
+# Whether to check if the nearby_decayed_sample_count_threshold decayed neighbour has at least lower_similarity_threshold similarity to the decayed sample
+check_similarity: True
+lower_similarity_threshold: 0.8
+
+# Combine clusters if their centroids have at least cluster_similartity_threshold similarity
+group_similartity_threshold: 0.8
+
+# How many decayed samples should be in a cluster to consider it (including the decayed neighbours if consider_nns is True)
+group_element_threshold: 0
+
+# Whether to print landmark actions and results
+verbose: True

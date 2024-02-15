@@ -1,11 +1,9 @@
 # %%
 import numpy as np
-import pandas as pd
 import os
 from collections import Counter
 
 from tqdm import tqdm
-import json
 
 from utils import get_top_n_indices, load_json, save_json, load_captions
 # %%
@@ -27,8 +25,8 @@ class Args:
         self.closest_clusters_count = 0
         self.check_similarity = True
         self.lower_similarity_threshold = 0.8
-        self.cluster_similartity_threshold = 0.8
-        self.cluster_element_threshold = 0
+        self.group_similartity_threshold = 0.8
+        self.group_element_threshold = 0
         self.verbose = True
 
 args = Args()
@@ -47,9 +45,7 @@ if args.verbose:
     print(f'Number of dataset samples: {dataset_size}')
 
 # Load the list of decayed indices
-decayed_indices_path = args.decayed_indices_path
-with open(decayed_indices_path, "r") as f:
-    decayed_indices = json.load(f)
+decayed_indices = load_json(args.decayed_indices_path)
 
 decayed_indices_size = len(decayed_indices)
 if args.verbose:
@@ -212,10 +208,10 @@ if args.check_similarity:
     for i in range(len(nn_scores_close_k)):
         nn_decayed_inds_temp = decayed_array[np.array(nn_indices_close_k[i])]==1
         nn_decayed_scores_temp = np.array(nn_scores_close_k[i])[nn_decayed_inds_temp]
-        if len(nn_decayed_scores_temp) == 0:
+        if len(nn_decayed_scores_temp) < args.nearby_decayed_sample_count_threshold:
             check2.append(False)
         else:
-            check2.append(nn_decayed_scores_temp[-1] >= nn_score_th)
+            check2.append(nn_decayed_scores_temp[args.nearby_decayed_sample_count_threshold - 1] >= nn_score_th)
     check = check & check2
 
 good_ones = np.where(check)[0]
@@ -277,145 +273,153 @@ for i, orig_good_indice in enumerate(orig_good_indices):
 # orig_good_indices_dict is a dictionary that maps the orig_good_indices to their indices in orig_good_indices
 # %%
 # The problem is sometimes while one sample is in the nn_indices_close_k of another, the latter is not in the nn_indices_close_k of the former
-clusters = np.ones(len(good_indices), dtype=int)*-1
-cluster_counter = 0
+groups = np.ones(len(good_indices), dtype=int)*-1
+groups_counter = 0
 for i in range(len(good_indices)):
-    if clusters[i] != -1:
+    if groups[i] != -1:
         continue
-    clusters[i] = cluster_counter
+    groups[i] = groups_counter
     to_dos = []
     to_dos.extend(diclist_good_ones[good_indices[i]])
     while len(to_dos) > 0:
         temp_indice = to_dos.pop()
         if temp_indice in good_indices_dict:
             temp_indice_pos = good_indices_dict[temp_indice]
-            if clusters[temp_indice_pos] == -1:
-                clusters[temp_indice_pos] = cluster_counter
+            if groups[temp_indice_pos] == -1:
+                groups[temp_indice_pos] = groups_counter
                 to_dos.extend(diclist_good_ones[temp_indice])
-            elif clusters[temp_indice_pos] != cluster_counter:
-                old_cluster_count = clusters[temp_indice_pos]
-                clusters[clusters==old_cluster_count] = cluster_counter
+            elif groups[temp_indice_pos] != groups_counter:
+                old_cluster_count = groups[temp_indice_pos]
+                groups[groups==old_cluster_count] = groups_counter
     
-    cluster_counter += 1
+    groups_counter += 1
 # %%
-# find the cluster centers and combine the clusters that are too close to each other
-# unique_clusters is already sorted
-# find the cosine similarity between the cluster centers. put 0 for the diagonal
+# find the group centers and combine the group that are too close to each other
+# unique_group is already sorted
+# find the cosine similarity between the group centers. put 0 for the diagonal
 # put 0's for upper triangular part
 
 good_dataset_embeddings = dataset_embeddings[np.array(good_indices)]
 
-unique_clusters = np.unique(clusters)
-num_clusters_new = len(unique_clusters)
-cluster_centers = np.zeros((num_clusters_new, good_dataset_embeddings.shape[1]))
-for i in range(num_clusters_new):
-    cluster_centers[i] = np.average(good_dataset_embeddings[clusters == unique_clusters[i]], axis=0)
-    cluster_centers[i] = cluster_centers[i]/np.linalg.norm(cluster_centers[i])
+unique_groups = np.unique(groups)
+num_groups_new = len(unique_groups)
+group_centers = np.zeros((num_groups_new, good_dataset_embeddings.shape[1]))
+for i in range(num_groups_new):
+    print(i)
+    group_centers[i] = np.average(good_dataset_embeddings[groups == unique_groups[i]], axis=0)
+    group_centers[i] = group_centers[i]/np.linalg.norm(group_centers[i])
 
-cluster_similarity = cluster_centers @ cluster_centers.T
-np.fill_diagonal(cluster_similarity, 0)
-cluster_similarity = np.tril(cluster_similarity)
+group_similarity = group_centers @ group_centers.T
+np.fill_diagonal(group_similarity, 0)
+group_similarity = np.tril(group_similarity)
 
-cluster_similartity_threshold = args.cluster_similartity_threshold
-rows, cols = np.where(cluster_similarity > cluster_similartity_threshold)
+group_similartity_threshold = args.group_similartity_threshold
+rows, cols = np.where(group_similarity > group_similartity_threshold)
 
 while len(rows) > 0:
 
-    for i in range(num_clusters_new - 1, 0, -1):
-        temp_sim = cluster_similarity[i,:]
+    for i in range(num_groups_new - 1, 0, -1):
+        temp_sim = group_similarity[i,:]
         am = np.argmax(temp_sim)
-        if temp_sim[am] > cluster_similartity_threshold:
-            clusters[clusters==unique_clusters[i]] = unique_clusters[am]
+        if temp_sim[am] > group_similartity_threshold:
+            groups[groups==unique_groups[i]] = unique_groups[am]
 
-    unique_clusters = np.unique(clusters)
-    num_clusters_new = len(unique_clusters)
-    cluster_centers = np.zeros((num_clusters_new, good_dataset_embeddings.shape[1]))
-    for i in range(num_clusters_new):
-        cluster_centers[i] = np.average(good_dataset_embeddings[clusters == unique_clusters[i]], axis=0)
-        cluster_centers[i] = cluster_centers[i]/np.linalg.norm(cluster_centers[i])
+    unique_groups = np.unique(groups)
+    num_groups_new = len(unique_groups)
+    group_centers = np.zeros((num_groups_new, good_dataset_embeddings.shape[1]))
+    for i in range(num_groups_new):
+        group_centers[i] = np.average(good_dataset_embeddings[groups == unique_groups[i]], axis=0)
+        group_centers[i] = group_centers[i]/np.linalg.norm(group_centers[i])
 
-    cluster_similarity = cluster_centers @ cluster_centers.T
-    np.fill_diagonal(cluster_similarity, 0)
-    cluster_similarity = np.tril(cluster_similarity)
+    group_similarity =group_centers @ group_centers.T
+    np.fill_diagonal(group_similarity, 0)
+    group_similarity = np.tril(group_similarity)
 
-    rows, cols = np.where(cluster_similarity > cluster_similartity_threshold)
+    rows, cols = np.where(group_similarity > group_similartity_threshold)
 
-unique_clusters = np.unique(clusters)
-num_clusters_new = len(unique_clusters)
+unique_groups = np.unique(groups)
+num_groups_new = len(unique_groups)
 if args.verbose:
-    print(f'Number of clusters: {num_clusters_new}')
+    print(f'Number of groups: {num_groups_new}')
 # %%
-counter = Counter(clusters)
+counter = Counter(groups)
 # %%
-# look at clusters with # elements > self.cluster_element_threshold
-cluster_element_threshold = args.cluster_element_threshold
-relevant_clusters = [x[0] for x in counter.items() if x[1] > cluster_element_threshold]
+# look at groups with # elements > self.groups_element_threshold
+group_element_threshold = args.group_element_threshold
+relevant_groups = [x[0] for x in counter.items() if x[1] > group_element_threshold]
 # %%
-# find the captions of the good_indices in those clusters
-final_clusters_indices = [np.array(good_indices)[clusters==x] for x in relevant_clusters]
-final_clusters_captions = [captions[x].tolist() for x in final_clusters_indices]
+# find the captions of the good_indices in those groups
+final_groups_indices = [np.array(good_indices)[groups==x].tolist() for x in relevant_groups]
+final_groups_captions = [captions[x].tolist() for x in final_groups_indices]
 
 if args.verbose:
-    print(f'Number of clusters with more than {cluster_element_threshold} elements: {len(relevant_clusters)}')
+    print(f'Number of groups with more than {group_element_threshold} elements: {len(relevant_groups)}')
     print(f'Number of good_indices: {len(good_indices)}')
 # %%
-# Find the average similarity captions in a cluster to that cluster's center
-average_similarities = [[] for _ in range(len(relevant_clusters))]
-average_decayed_neighbours = [[] for _ in range(len(relevant_clusters))]
-neighbours_count = [[] for _ in range(len(relevant_clusters))]
+# Find the average similarity captions in a group to that group's center
+average_similarities = [[] for _ in range(len(relevant_groups))]
+average_decayed_neighbours = [[] for _ in range(len(relevant_groups))]
+neighbours_count = [[] for _ in range(len(relevant_groups))]
 
 if args.consider_nns:
-    for i in range(len(relevant_clusters)):
-        cluster_caption_embeddings = dataset_embeddings[final_clusters_indices[i]]
-        cluster_center_embedding = np.average(cluster_caption_embeddings, axis=0)
-        cluster_center_embedding /= np.linalg.norm(cluster_center_embedding)
-        within_cluster_sim = cluster_caption_embeddings @ cluster_center_embedding
-        average_similarities[i] = np.average(within_cluster_sim)
+    for i in range(len(relevant_groups)):
+        group_caption_embeddings = dataset_embeddings[final_groups_indices[i]]
+        group_center_embedding = np.average(group_caption_embeddings, axis=0)
+        group_center_embedding /= np.linalg.norm(group_center_embedding)
+        within_group_sim = group_caption_embeddings @ group_center_embedding
+        average_similarities[i] = np.average(within_group_sim)
 
         decayed_neighbour_count = 0
         neighbourhood_count = 0
-        for decayed_ind in final_clusters_indices[i]:
+        for decayed_ind in final_groups_indices[i]:
             if decayed_ind in orig_good_indices_dict:
                 decayed_neighbour_count += diclist_nn_close_k[decayed_interest_dict[decayed_ind]]['nn_decayed_count_close_k']
             else:
                 neighbourhood_count += 1
 
-        average_decayed_neighbours[i] = decayed_neighbour_count / (len(final_clusters_indices[i]) - neighbourhood_count)
+        average_decayed_neighbours[i] = decayed_neighbour_count / (len(final_groups_indices[i]) - neighbourhood_count)
         neighbours_count[i] = neighbourhood_count
 else:
-    for i in range(len(relevant_clusters)):
-        cluster_caption_embeddings = dataset_embeddings[final_clusters_indices[i]]
-        cluster_center_embedding = np.average(cluster_caption_embeddings, axis=0)
-        cluster_center_embedding /= np.linalg.norm(cluster_center_embedding)
-        within_cluster_sim = cluster_caption_embeddings @ cluster_center_embedding
-        average_similarities[i] = np.average(within_cluster_sim)
+    for i in range(len(relevant_groups)):
+        group_caption_embeddings = dataset_embeddings[final_groups_indices[i]]
+        group_center_embedding = np.average(group_caption_embeddings, axis=0)
+        group_center_embedding /= np.linalg.norm(group_center_embedding)
+        within_group_sim = group_caption_embeddings @ group_center_embedding
+        average_similarities[i] = np.average(within_group_sim)
 
         decayed_neighbour_count = 0
-        for decayed_ind in final_clusters_indices[i]:
+        for decayed_ind in final_groups_indices[i]:
             decayed_neighbour_count += diclist_nn_close_k[decayed_interest_dict[decayed_ind]]['nn_decayed_count_close_k']
         
-        average_decayed_neighbours[i] = decayed_neighbour_count / len(final_clusters_indices[i])
+        average_decayed_neighbours[i] = decayed_neighbour_count / len(final_groups_indices[i])
 # %%
 if args.verbose:
     if args.consider_nns:
-        for i, x in enumerate(final_clusters_captions):
-            print(f'Cluster {i}, # captions: {len(x)}')
+        for i, x in enumerate(final_groups_captions):
+            print(f'group {i}, # captions: {len(x)}')
             print(f'{len(x)-neighbours_count[i]} fulfilled conditions, {neighbours_count[i]} are decayed neighbours of them')
-            print(f'Average cosine similarity to cluster center: {average_similarities[i]:.3f}')
+            print(f'Average cosine similarity to group center: {average_similarities[i]:.3f}')
             print(f'Isolation factor {average_decayed_neighbours[i]:.2f}/20')
             print(x[:10])
             print('\n')
     else:
-        for i, x in enumerate(final_clusters_captions):
-            print(f'Cluster {i}, # captions: {len(x)}')
-            print(f'Average cosine similarity to cluster center: {average_similarities[i]:.3f}')
+        for i, x in enumerate(final_groups_captions):
+            print(f'group {i}, # captions: {len(x)}')
+            print(f'Average cosine similarity to group center: {average_similarities[i]:.3f}')
+            print(f'Isolation factor {average_decayed_neighbours[i]:.2f}/20')
             print(x[:10])
             print('\n')
 # %%
-# save the cluster captions to a json file
-final_clusters_captions_path = os.path.join(args.result_folder, 'cluster_captions.json')
-final_clusters_indices_path = os.path.join(args.result_folder, 'cluster_indices.json')
-save_json(final_clusters_captions_path, final_clusters_captions)
-save_json(final_clusters_indices_path, final_clusters_indices)
+# save the group captions to a json file
+final_groups_captions_path = os.path.join(args.result_folder, 'group_captions.json')
+final_groups_indices_path = os.path.join(args.result_folder, 'group_indices.json')
+similarity_to_group_center_path = os.path.join(args.result_folder, 'similarity_to_group_center.npy')
+isolation_factor_path = os.path.join(args.result_folder, 'isolation_factor.npy')
+
+save_json(final_groups_captions_path, final_groups_captions)
+save_json(final_groups_indices_path, final_groups_indices)
+np.save(similarity_to_group_center_path, average_similarities)
+np.save(isolation_factor_path, average_decayed_neighbours)
 # %%
 print('Completed vector search!')
+# %%
