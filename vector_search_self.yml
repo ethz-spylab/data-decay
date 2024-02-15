@@ -1,26 +1,35 @@
-# Location of the embeddings we want to search over
-dataset_embeddings_path: "/data/cc3m/cc3m_2023/embeddings/text_embeddings_L14.npy"
+# this is the main yaml
+# TODO: write in the readme that if the user wants to regenerate something, just delete the embeddings / clusters / dictlist_nn.json files and run the script again
+# otherwise, the script will use the existing files, it will get much faster after the first run
+
+# Whether to print landmark actions and results
+verbose: True
+
+# Location of the captions and urls (for CC3M format. For other formats, please modify the load_captions in utils.py)
+captions_urls_path: "/data/cc3m/cc3m_2023/Train_GCC-training.tsv"
 
 # Location of decayed indices
 decayed_indices_path: '/data/cc3m/decayed_indices.json'
 
-# Location of clusters
-clusters_folder: '/data/cc3m/script_tests/clusters/'
+# Location of the embeddings we want to search over
+# TODO: if this exists, use it; else create new embeddings
+dataset_embeddings_path: "/data/cc3m/cc3m_2023/embeddings/text_embeddings_L14.npy"
 
-# Location of decayed samples dictionary
-decayed_samples_dict_nn_path: '/data/cc3m/script_tests/diclist_nn.json'
+# Location of clusters
+# TODO: if there relevant files in this folder exist, use it; else create new clusters
+clusters_folder: '/data/cc3m/script_tests/clusters/'
 
 # Only need to recalculate decayed samples dictionary if decayed indices or the nearby_sample_count are updated 
 decayed_dict_calculate: False
+
+# Location of decayed samples dictionary
+decayed_samples_dict_nn_path: '/data/cc3m/script_tests/diclist_nn.json'
 
 # True if we want to consider the nearest decayed neighbors of the decayed samples that fulfill the conditions
 consider_nns: True
 
 # Which similarity measure to use distances or dot products
 similarity_type: 'dot_products'
-
-# Location of the captions and urls (for CC3M format. For other formats, please modify the load_captions in utils.py)
-captions_urls_path: "/data/cc3m/cc3m_2023/Train_GCC-training.tsv"
 
 # Where to save the results. Make sure folder exists
 result_folder: '/data/cc3m/script_tests/results/'
@@ -49,5 +58,3 @@ group_similartity_threshold: 0.8
 # How many decayed samples should be in a cluster to consider it (including the decayed neighbours if consider_nns is True)
 group_element_threshold: 0
 
-# Whether to print landmark actions and results
-verbose: True

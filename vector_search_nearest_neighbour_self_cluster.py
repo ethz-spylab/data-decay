@@ -5,8 +5,9 @@ import argparse
 
 from tqdm import tqdm
 
-from utils import get_top_n_indices, load_json, save_json, load_captions, load_yaml_munch
+from utils import get_top_n_indices, load_json, save_json, load_captions, load_yaml_munch, caption_list_represent_with_counts
 
+# TODO Ozgur: the group consists of "core" decayed captions and "peripheral" decayed captions. Rename variables accordingly.
 
 def main(args):
     
@@ -372,21 +373,23 @@ def main(args):
             
             average_decayed_neighbours[i] = decayed_neighbour_count / len(final_groups_indices[i])
     
+
+    # TODO Ozgur: save the full output below to a file in results/, preferably in a form of a JSON list
     if args.verbose:
         if args.consider_nns:
-            for i, x in enumerate(final_groups_captions):
-                print(f'group {i}, # captions: {len(x)}')
-                print(f'{len(x)-neighbours_count[i]} fulfilled conditions, {neighbours_count[i]} are decayed neighbours of them')
+            for i, captions in enumerate(final_groups_captions):
+                print(f'group {i}, # captions: {len(captions)}')
+                print(f'{len(captions)-neighbours_count[i]} core decayed captions in the group, {neighbours_count[i]} peripheral decayed captions')
                 print(f'Average cosine similarity to group center: {average_similarities[i]:.3f}')
-                print(f'Isolation factor {average_decayed_neighbours[i]:.2f}/{args.nearby_sample_count}')
-                print(x[:10])
+                print(f'Isolation coefficient: {average_decayed_neighbours[i] / args.nearby_sample_count:.2f} on neighborhood sample {args.nearby_sample_count}')
+                print(caption_list_represent_with_counts(captions, 8))
                 print('\n')
         else:
-            for i, x in enumerate(final_groups_captions):
-                print(f'group {i}, # captions: {len(x)}')
+            for i, captions in enumerate(final_groups_captions):
+                print(f'group {i}, # captions: {len(captions)}')
                 print(f'Average cosine similarity to group center: {average_similarities[i]:.3f}')
-                print(f'Isolation factor {average_decayed_neighbours[i]:.2f}/{args.nearby_sample_count}')
-                print(x[:10])
+                print(f'Isolation coefficient: {average_decayed_neighbours[i] / args.nearby_sample_count:.2f} on neighborhood sample {args.nearby_sample_count}')
+                print(caption_list_represent_with_counts(captions, 8))
                 print('\n')
     
     # save the group captions to a json file

@@ -3,6 +3,7 @@ import numpy as np
 import json
 import pandas as pd
 from munch import Munch
+from collections import Counter
 import yaml
 
 # %%
@@ -44,3 +45,26 @@ def get_top_n_indices(array : np.ndarray, n: int = 10, sort = True):
         return temp[np.argsort(array[temp])][::-1]
     else:
         return np.argpartition(array, -n)[-n:]
+
+def caption_list_represent_with_counts(caption_list, max_diff_elems=5):
+    """
+    Given a list of captions, return a string representation with counts for repeated elements.
+    The representation will only include up to `max_diff_elems` different elements for brevity.
+
+    Args:
+        caption_list (list of str): The list of captions to represent.
+        max_diff_elems (int): The maximum number of different elements to include in the representation.
+
+    Returns:
+        str: A string representation of the list with counts for repeated elements.
+    """
+    # Count the occurrences of each caption
+    caption_counts = Counter(caption_list)
+    
+    # Sort captions by count in descending order and take the top `max_diff_elems`
+    most_common_captions = caption_counts.most_common(max_diff_elems)
+    
+    # Build the string representation
+    representation = ", ".join([f'"{caption}" * {count}' for caption, count in most_common_captions])
+    
+    return representation

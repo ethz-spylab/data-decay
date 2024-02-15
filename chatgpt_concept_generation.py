@@ -16,8 +16,8 @@ decayed_indices_path = Path('/data/cc3m/script_tests/decayed_indices/combined_de
 decayed_indices_path = Path('/data/cc3m/decayed_indices.json')
 generated_captions_path_dir = Path('/data/cc3m/script_tests/results/')
 
-cluster_counts = [10, 25, 50]
-#cluster_counts = None
+#cluster_counts = [10, 25, 50]
+cluster_counts = None
 
 dotenv.load_dotenv()
 
@@ -27,7 +27,7 @@ client = OpenAI()
 
 if cluster_counts is None:
 
-    cluster_captions_path = Path(f'/data/cc3m/script_tests/results/cluster_captions.json')
+    cluster_captions_path = Path(f'/data/cc3m/script_tests/results/group_captions.json')
     with open(cluster_captions_path, "r") as f:
         cluster_captions = json.load(f)
 
