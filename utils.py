@@ -2,7 +2,8 @@
 import numpy as np
 import json
 import pandas as pd
-
+from munch import Munch
+import yaml
 
 # %%
 def load_json(file_path):
@@ -22,6 +23,12 @@ def load_captions(file_path):
     captions_urls.columns = ["caption", "url"]
     captions = np.array(captions_urls["caption"])
     return captions
+
+def load_yaml_munch(path):
+    with open(path) as f:
+        y = yaml.load(f, Loader=yaml.Loader)
+
+    return Munch.fromDict(y)
 # %%
 def get_top_n_indices(array : np.ndarray, n: int = 10, sort = True):
     """Returns the indices of the top n elements of an array.
