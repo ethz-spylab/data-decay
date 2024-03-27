@@ -69,3 +69,5 @@ for i in range(5):
 import json
 a = json.load(open('/data/projects/data-decay/cc3m/script_tests/results/summary.json'))
 # %%
+a
+# %%
