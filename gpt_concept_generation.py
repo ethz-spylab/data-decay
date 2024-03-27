@@ -1,15 +1,10 @@
 # %%
 from openai import OpenAI
-import os
 import dotenv
 from pathlib import Path
 import random
 import json
-from transformers import CLIPProcessor, CLIPModel
-import numpy as np
 from pathlib import Path
-import torch
-import matplotlib.pyplot as plt
 
 
 generated_captions_path_dir = Path('/data/projects/data-decay/cc3m/script_tests/results/')

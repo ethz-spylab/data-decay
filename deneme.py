@@ -71,3 +71,42 @@ a = json.load(open('/data/projects/data-decay/cc3m/script_tests/results/summary.
 # %%
 a
 # %%
+import numpy as np
+import json
+import pandas as pd
+from munch import Munch
+from collections import Counter
+import yaml
+import torch
+from openai import OpenAI
+import dotenv
+from pathlib import Path
+import random
+import json
+from pathlib import Path
+import numpy as np
+import os
+from collections import Counter
+import argparse
+
+from tqdm import tqdm
+import torch
+import numpy as np
+from tqdm import trange
+from torch import Tensor
+import math
+from sklearn.cluster import KMeans, MiniBatchKMeans
+import numpy as np
+import pandas as pd
+import os
+import argparse
+import numpy as np
+import pandas as pd
+import torch
+import math
+from tqdm import tqdm
+import argparse
+import os
+
+from transformers import CLIPProcessor, CLIPModel
+# %%

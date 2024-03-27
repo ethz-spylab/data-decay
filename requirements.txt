@@ -8,3 +8,5 @@ munch
 tqdm
 PyYAML
 transformers
+openai
+python-dotenv

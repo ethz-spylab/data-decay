@@ -3,7 +3,7 @@
 This kind of dataset can *decay* over time, as the URLs become invalid or stop pointing to the original content, for whatever reason.  This 
 leaves users (e.g. model developers) with a dataset that has varying degrees of coverage over different concepts covered by the dataset.
 
-*DecayedConcepts* is a tool to understand how much the dataset has decayed, and pinpoint what concepts are most affected.
+- *DecayedConcepts* is a tool to understand how much the dataset has decayed, and pinpoint what concepts are most affected.
 The input is just a list of URLs and their captions, + a list of indices that are no longer valid.
 The user can specify an embedding model (e.g. clip-ViT-L-14) or provide pre-generated embeddings.
 *DecayedConcepts* searches over the embedding space to find decayed patches and then returns the captions of the decayed samples in those patches.
