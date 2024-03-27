@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 captions_embedding_path = Path("/data/cc3m/cc3m_2023/embeddings/text_embeddings_L14.npy")
 decayed_indices_path = Path('/data/cc3m/script_tests/decayed_indices/combined_decayed_indices.txt')
 #decayed_indices_path = Path('/data/cc3m/decayed_indices.json')
-generated_captions_path = Path('/data/cc3m/script_tests/results/generated_captions_25.json')
+generated_captions_path = Path('/data/cc3m/script_tests/results/generated_captions.json')
 # %%
 with open(generated_captions_path, "r") as f:
     results = json.load(f)

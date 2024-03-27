@@ -1,63 +1,71 @@
 # %%
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
-import os
-from pathlib import Path
-import torch
-import json
-
+import clip
 from transformers import CLIPProcessor, CLIPModel
+import pandas as pd
+import numpy as np
+import torch
+import math
+from tqdm import tqdm
 # %%
-
-class Args:
-    def __init__(self):
-        self.dataset_embeddings_path = "/data/cc3m/cc3m_2023/embeddings/text_embeddings_L14.npy"
-        self.clusters_folder = '/data/cc3m/script_tests/clusters/'
-        self.similarity_type = 'dot_products'
-        self.captions_urls_path = "/data/cc3m/cc3m_2023/Train_GCC-training.tsv"
-        self.decayed_indices_save_folder = '/data/cc3m/script_tests/decayed_indices/'
-        self.ratio_of_decayed_samples = 0.05
-        self.targeted_decay_ratio_of_decayed_samples = 0.1 
-        self.start_decay_over_number_ratio = 2.0
-        self.device = '7'
-        self.verbose = True
-args = Args()
+model_name = "openai/clip-vit-large-patch14"
+model = CLIPModel.from_pretrained(model_name)
+processor = CLIPProcessor.from_pretrained(model_name)
+device = "cuda:7"
+model.to(device)
 # %%
-captions_urls_path = args.captions_urls_path
-captions_urls = pd.read_csv(captions_urls_path, sep="\t", header=None)
-captions_urls.columns = ["caption", "url"]
-captions = np.array(captions_urls["caption"])
-url = np.array(captions_urls["url"])
-
-# Load the dataset embeddings
-if args.verbose:
-    print("Loading dataset embeddings")
-dataset_embeddings_path = args.dataset_embeddings_path
-dataset_embeddings = np.load(dataset_embeddings_path)
-
-dataset_size = dataset_embeddings.shape[0]
-if args.verbose:
-    print(f'Number of dataset samples: {dataset_size}')
+df_train = pd.read_csv("/data/projects/data-decay/cc3m/cc3m_2023/Train_GCC-training.tsv", 
+                       sep='\t', names=["caption","url"], usecols=range(0,2))
 # %%
-save_file = args.decayed_indices_save_folder
-save_file_decayed_samples = os.path.join(save_file, 'decayed_indices.txt')
-save_file_combined_decayed_samples = os.path.join(save_file, 'combined_decayed_indices.txt')
+step_size = 1000
+caption_size = len(df_train)
+required_steps = math.ceil(caption_size / step_size)
 # %%
-with open(save_file_decayed_samples, 'r') as f:
-    decayed_samples = json.load(f)
+df = []
+for i in tqdm(range(required_steps)):
+    torch.cuda.empty_cache()
+    texts = [df_train['caption'][x] for x in range(i*step_size,(i+1)*step_size)]
+    inputs = processor(text=texts, return_tensors="pt", padding=True,truncation=True).to(device)
+    with torch.no_grad():
+        outputs = model.text_model(**inputs)
+        txt_embeds = outputs[1]
+        txt_embeds = txt_embeds / txt_embeds.norm(dim=-1, keepdim=True) 
+    df.append(txt_embeds.cpu().numpy())
 # %%
-with open(save_file_combined_decayed_samples, 'r') as f:
-    combined_decayed_samples = json.load(f)
+df
 # %%
-i = 0
-decayed_ones = np.array(decayed_samples[i])
-decayed_embes = dataset_embeddings[decayed_ones]
-
-sims = decayed_embes @ dataset_embeddings.T
-np.fill_diagonal(sims, 0)
+# merge the list of arrays into a single array
+df = np.concatenate(df, axis=0)
 # %%
-captions[decayed_ones]
+df
 # %%
-np.sum(sims > 0.8)
+df.shape
+# %%
+# create numpy array from 0 to 104
+a = np.arange(105)
+step_size = 10
+required_steps = math.ceil(len(a) / step_size)
+# %%
+b = []
+for i in range(required_steps):
+    b.append(a[i*step_size:(i+1)*step_size])
+# %%
+b
+# %%
+# load "/data/projects/data-decay/cc3m/cc3m_2023/captions/Train_GCC-training.tsv" to df_train
+df_train = pd.read_csv("/data/projects/data-decay/cc3m/cc3m_2023/captions/Train_GCC-training.tsv", 
+                       sep='\t', names=["caption","url"], usecols=range(0,2))
+# %%
+df_train["caption"]
+# %%
+len(df_train)
+# %%
+step_size = 1000
+caption_size = len(df_train)
+required_steps = math.ceil(caption_size / step_size)
+# %%
+for i in range(5):
+    print(i)
+# %%
+import json
+a = json.load(open('/data/projects/data-decay/cc3m/script_tests/results/summary.json'))
 # %%

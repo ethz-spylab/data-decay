@@ -106,12 +106,6 @@ def main(args):
         save_json(args.decayed_samples_dict_nn_path, diclist_nn)
 
     
-    # create a dict for diclist_nn
-    """ diclist_nn_dict = {}
-    for i in range(len(diclist_nn)):
-        diclist_nn_dict[diclist_nn[i]['decayed_indice']] = i """
-
-    
     # now include the closest clusters
 
     nn_decayed_counts = [diclist_nn[x]['nn_decayed_count'] for x in range(len(diclist_nn))]
@@ -195,80 +189,79 @@ def main(args):
                 check2.append(nn_decayed_scores_temp[args.nearby_decayed_sample_count_threshold - 1] >= nn_score_th)
         check = check & check2
 
-    good_ones = np.where(check)[0]
-    orig_good_indices = [diclist_nn_close_k[x]['decayed_indice'] for x in good_ones]
+    cores = np.where(check)[0]
+    core_indices = [diclist_nn_close_k[x]['decayed_indice'] for x in cores]
 
-    orig_good_indices_dict = {}
-    for i in range(len(orig_good_indices)):
-        orig_good_indices_dict[orig_good_indices[i]] = i
+    core_indices_dict = {}
+    for i in range(len(core_indices)):
+        core_indices_dict[core_indices[i]] = i
 
     if args.verbose:
-        print(f'Number of good ones: {len(good_ones)}')
-        print(f'Number of good indices, pre-filter for decayed: {len(orig_good_indices)}')
+        print(f'Number of core decayed samples: {len(cores)}')
 
-    good_indices = orig_good_indices.copy()
+    combined_indices = core_indices.copy()
     if args.consider_nns:
         if args.verbose:
-            print("Considering the neighbours")
-        good_indices_neighbours = []
-        for i in good_ones:
-            good_indices_neighbours.extend(diclist_nn_close_k[i]['nn_indices_close_k'])
-        good_indices.extend(good_indices_neighbours)
-        good_indices = np.unique(good_indices).tolist()
+            print("Considering the peripheral decayed samples as well.")
+        core_and_peripherals = []
+        for i in cores:
+            core_and_peripherals.extend(diclist_nn_close_k[i]['nn_indices_close_k'])
+        combined_indices.extend(core_and_peripherals)
+        combined_indices = np.unique(combined_indices).tolist()
 
-    # remove the non-decayed samples from the good_indices
-    good_indices = np.array(good_indices)
-    good_indices = good_indices[decayed_array[good_indices]==1].tolist()
+    # remove the non-decayed samples from the combined_indices
+    combined_indices = np.array(combined_indices)
+    combined_indices = combined_indices[decayed_array[combined_indices]==1].tolist()
 
-    if args.verbose:
-        print(f'Number of good indices, post-filter for decayed: {len(good_indices)}')
+    if args.verbose and args.consider_nns:
+        print(f'Number of core and peripheral samples in total: {len(combined_indices)}')
     
-    diclist_orig_good_ones = [diclist_nn_close_k[x].copy() for x in good_ones]
+    diclist_core_samples = [diclist_nn_close_k[x].copy() for x in cores]
     
-    for i in range(len(diclist_orig_good_ones)):
-        diclist_orig_good_ones[i]['decayed_nn_indices'] = [x for x in diclist_orig_good_ones[i]['nn_indices_close_k'] if decayed_array[x]==1]
+    for i in range(len(diclist_core_samples)):
+        diclist_core_samples[i]['decayed_nn_indices'] = [x for x in diclist_core_samples[i]['nn_indices_close_k'] if decayed_array[x]==1]
     
-    good_indices_dict = {}
-    for i in range(len(good_indices)):
-        good_indices_dict[good_indices[i]] = i
+    combined_indices_dict = {}
+    for i in range(len(combined_indices)):
+        combined_indices_dict[combined_indices[i]] = i
 
     
-    diclist_good_ones = {}
-    for good_indice in good_indices:
-        diclist_good_ones[good_indice] = []
+    diclist_combined_samples = {}
+    for combined_indice in combined_indices:
+        diclist_combined_samples[combined_indice] = []
 
-    for i, orig_good_indice in enumerate(orig_good_indices):
-        diclist_good_ones[orig_good_indice] = diclist_orig_good_ones[i]['decayed_nn_indices']
-        to_dos = diclist_orig_good_ones[i]['decayed_nn_indices']
+    for i, orig_good_indice in enumerate(core_indices):
+        diclist_combined_samples[orig_good_indice] = diclist_core_samples[i]['decayed_nn_indices']
+        to_dos = diclist_core_samples[i]['decayed_nn_indices']
         if args.consider_nns:
             for to_do in to_dos:
-                if to_do not in orig_good_indices_dict:
-                    diclist_good_ones[to_do].append(orig_good_indice)
+                if to_do not in core_indices_dict:
+                    diclist_combined_samples[to_do].append(orig_good_indice)
 
     
-    # orig_good_indices are the decayed samples that fulfill the conditions
-    # good_indices are the decayed samples that fulfill the conditions and their decayed neighbours
-    # good_indices_dict is a dictionary that maps the good_indices to their indices in good_indices
-    # diclist_good_ones is a dictionary that maps the good_indices to their decayed neighbours
-    # diclist_orig_good_ones is the original dic_list for orig_good_indices
-    # orig_good_indices_dict is a dictionary that maps the orig_good_indices to their indices in orig_good_indices
+    # core_indices (orig_good_indices) are the decayed samples that fulfill the conditions
+    # combined_indices (good_indices) are the decayed samples that fulfill the conditions and their decayed neighbours
+    # combined_indices_dict (good_indices_dict) is a dictionary that maps the good_indices to their indices in good_indices
+    # diclist_combined_samples (diclist_good_ones) is a dictionary that maps the good_indices to their decayed neighbours
+    # diclist_core_samples (diclist_orig_good_ones) is the original dic_list for orig_good_indices
+    # core_indices_dict (orig_good_indices_dict) is a dictionary that maps the orig_good_indices to their indices in orig_good_indices
     
     # The problem is sometimes while one sample is in the nn_indices_close_k of another, the latter is not in the nn_indices_close_k of the former
-    groups = np.ones(len(good_indices), dtype=int)*-1
+    groups = np.ones(len(combined_indices), dtype=int)*-1
     groups_counter = 0
-    for i in range(len(good_indices)):
+    for i in range(len(combined_indices)):
         if groups[i] != -1:
             continue
         groups[i] = groups_counter
         to_dos = []
-        to_dos.extend(diclist_good_ones[good_indices[i]])
+        to_dos.extend(diclist_combined_samples[combined_indices[i]])
         while len(to_dos) > 0:
             temp_indice = to_dos.pop()
-            if temp_indice in good_indices_dict:
-                temp_indice_pos = good_indices_dict[temp_indice]
+            if temp_indice in combined_indices_dict:
+                temp_indice_pos = combined_indices_dict[temp_indice]
                 if groups[temp_indice_pos] == -1:
                     groups[temp_indice_pos] = groups_counter
-                    to_dos.extend(diclist_good_ones[temp_indice])
+                    to_dos.extend(diclist_combined_samples[temp_indice])
                 elif groups[temp_indice_pos] != groups_counter:
                     old_cluster_count = groups[temp_indice_pos]
                     groups[groups==old_cluster_count] = groups_counter
@@ -280,7 +273,7 @@ def main(args):
     # find the cosine similarity between the group centers. put 0 for the diagonal
     # put 0's for upper triangular part
 
-    good_dataset_embeddings = dataset_embeddings[np.array(good_indices)]
+    good_dataset_embeddings = dataset_embeddings[np.array(combined_indices)]
 
     unique_groups = np.unique(groups)
     num_groups_new = len(unique_groups)
@@ -294,7 +287,7 @@ def main(args):
     group_similarity = np.tril(group_similarity)
 
     group_similartity_threshold = args.group_similartity_threshold
-    rows, cols = np.where(group_similarity > group_similartity_threshold)
+    rows, _ = np.where(group_similarity > group_similartity_threshold)
 
     while len(rows) > 0:
 
@@ -315,7 +308,7 @@ def main(args):
         np.fill_diagonal(group_similarity, 0)
         group_similarity = np.tril(group_similarity)
 
-        rows, cols = np.where(group_similarity > group_similartity_threshold)
+        rows, _ = np.where(group_similarity > group_similartity_threshold)
 
     unique_groups = np.unique(groups)
     num_groups_new = len(unique_groups)
@@ -329,12 +322,12 @@ def main(args):
     relevant_groups = [x[0] for x in counter.items() if x[1] > group_element_threshold]
     
     # find the captions of the good_indices in those groups
-    final_groups_indices = [np.array(good_indices)[groups==x].tolist() for x in relevant_groups]
+    final_groups_indices = [np.array(combined_indices)[groups==x].tolist() for x in relevant_groups]
     final_groups_captions = [captions[x].tolist() for x in final_groups_indices]
 
     if args.verbose:
         print(f'Number of groups with more than {group_element_threshold} elements: {len(relevant_groups)}')
-        print(f'Number of good_indices: {len(good_indices)}')
+        print(f'Number of good_indices: {len(combined_indices)}')
     
     # Find the average similarity captions in a group to that group's center
     average_similarities = [[] for _ in range(len(relevant_groups))]
@@ -352,7 +345,7 @@ def main(args):
             decayed_neighbour_count = 0
             neighbourhood_count = 0
             for decayed_ind in final_groups_indices[i]:
-                if decayed_ind in orig_good_indices_dict:
+                if decayed_ind in core_indices_dict:
                     decayed_neighbour_count += diclist_nn_close_k[decayed_interest_dict[decayed_ind]]['nn_decayed_count_close_k']
                 else:
                     neighbourhood_count += 1
@@ -375,33 +368,47 @@ def main(args):
     
 
     # TODO Ozgur: save the full output below to a file in results/, preferably in a form of a JSON list
+    summary = [[] for _ in range(len(final_groups_captions))]
     if args.verbose:
         if args.consider_nns:
             for i, captions in enumerate(final_groups_captions):
-                print(f'group {i}, # captions: {len(captions)}')
-                print(f'{len(captions)-neighbours_count[i]} core decayed captions in the group, {neighbours_count[i]} peripheral decayed captions')
-                print(f'Average cosine similarity to group center: {average_similarities[i]:.3f}')
-                print(f'Isolation coefficient: {average_decayed_neighbours[i] / args.nearby_sample_count:.2f} on neighborhood sample {args.nearby_sample_count}')
-                print(caption_list_represent_with_counts(captions, 8))
+                f1 = f'group {i}, # captions: {len(captions)}'
+                print(f1)
+                f2 = f'{len(captions)-neighbours_count[i]} core decayed captions in the group, {neighbours_count[i]} peripheral decayed captions'
+                print(f2)
+                f3 = f'Average cosine similarity to group center: {average_similarities[i]:.3f}'
+                print(f3)
+                f4 = f'Isolation coefficient of core decayed captions: {average_decayed_neighbours[i] / args.nearby_sample_count:.2f} on neighborhood sample {args.nearby_sample_count}'
+                print(f4)
+                f5 = caption_list_represent_with_counts(captions, 8)
+                print(f5)
                 print('\n')
+                summary[i] = [f1, f2, f3, f4, f5]
         else:
             for i, captions in enumerate(final_groups_captions):
-                print(f'group {i}, # captions: {len(captions)}')
-                print(f'Average cosine similarity to group center: {average_similarities[i]:.3f}')
-                print(f'Isolation coefficient: {average_decayed_neighbours[i] / args.nearby_sample_count:.2f} on neighborhood sample {args.nearby_sample_count}')
-                print(caption_list_represent_with_counts(captions, 8))
+                f1 = f'group {i}, # captions: {len(captions)}'
+                print(f1)
+                f2 = f'Average cosine similarity to group center: {average_similarities[i]:.3f}'
+                print(f2)
+                f3 = f'Isolation coefficient of core decayed captions: {average_decayed_neighbours[i] / args.nearby_sample_count:.2f} on neighborhood sample {args.nearby_sample_count}'
+                print(f3)
+                f4 = caption_list_represent_with_counts(captions, 8)
+                print(f4)
                 print('\n')
+                summary[i] = [f1, f2, f3, f4]
     
     # save the group captions to a json file
     final_groups_captions_path = os.path.join(args.result_folder, 'group_captions.json')
     final_groups_indices_path = os.path.join(args.result_folder, 'group_indices.json')
     similarity_to_group_center_path = os.path.join(args.result_folder, 'similarity_to_group_center.npy')
     isolation_factor_path = os.path.join(args.result_folder, 'isolation_factor.npy')
+    summary_path = os.path.join(args.result_folder, 'summary.json')
 
     save_json(final_groups_captions_path, final_groups_captions)
     save_json(final_groups_indices_path, final_groups_indices)
     np.save(similarity_to_group_center_path, average_similarities)
     np.save(isolation_factor_path, average_decayed_neighbours)
+    save_json(summary_path, summary)
     
     print('Completed vector search!')
 

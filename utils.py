@@ -5,6 +5,7 @@ import pandas as pd
 from munch import Munch
 from collections import Counter
 import yaml
+import torch
 
 # %%
 def load_json(file_path):
@@ -68,3 +69,19 @@ def caption_list_represent_with_counts(caption_list, max_diff_elems=5):
     representation = ", ".join([f'"{caption}" * {count}' for caption, count in most_common_captions])
     
     return representation
+
+# %%
+def dot_products_distances(emb_A, emb_B, device_c:int = 0):
+    """Compute the dot products between all pairs of vectors in emb_A and emb_B.
+    Args:
+        emb_A: np.array of shape (n_A, d)
+        emb_B: np.array of shape (n_B, d)
+    Returns:
+        np.array of shape (n_A, n_B) with the dot products.
+    """
+    device = torch.device(f'cuda:{device_c}')
+    emb_A = torch.from_numpy(emb_A).to(torch.float32).to(device)
+    emb_B = torch.from_numpy(emb_B).to(torch.float32).to(device)
+    dot_products = torch.mm(emb_A, emb_B.t()).cpu().numpy()
+    distances = torch.cdist(emb_A, emb_B).cpu().numpy()
+    return dot_products, distances

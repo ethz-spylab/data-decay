@@ -6,24 +6,44 @@
 verbose: True
 
 # Location of the captions and urls (for CC3M format. For other formats, please modify the load_captions in utils.py)
-captions_urls_path: "/data/cc3m/cc3m_2023/Train_GCC-training.tsv"
+captions_urls_path: "/data/projects/data-decay/cc3m/cc3m_2023/captions/Train_GCC-training.tsv"
+
+# Model to use for the embeddings
+model_name: "openai/clip-vit-large-patch14"
+
+# Cuda device to use
+cuda_device: 7
+
+# Step size for calculating embeddings
+step_size: 1000
+
+# Dataset embedding location
+dataset_embeddings_path: "/data/projects/data-decay/cc3m/cc3m_2023/embeddings2/text_embeddings_L14.npy"
+
+# # of clusters to create
+cluster_count: 100
+
+# Clusters save folder
+clusters_folder: "/data/projects/data-decay/cc3m/cc3m_2023/clusters/"
+
+# Use torch kmeans instead of sklearn kmeans
+use_torch_kmeans: True
+
+
+
+
+
+
 
 # Location of decayed indices
-decayed_indices_path: '/data/cc3m/decayed_indices.json'
-
-# Location of the embeddings we want to search over
-# TODO: if this exists, use it; else create new embeddings
-dataset_embeddings_path: "/data/cc3m/cc3m_2023/embeddings/text_embeddings_L14.npy"
-
-# Location of clusters
-# TODO: if there relevant files in this folder exist, use it; else create new clusters
-clusters_folder: '/data/cc3m/script_tests/clusters/'
+#decayed_indices_path: '/data/projects/data-decay/cc3m/decayed_indices.json'
+decayed_indices_path: '/data/projects/data-decay/cc3m/script_tests/decayed_indices/combined_decayed_indices.txt'
 
 # Only need to recalculate decayed samples dictionary if decayed indices or the nearby_sample_count are updated 
-decayed_dict_calculate: False
+decayed_dict_calculate: True
 
 # Location of decayed samples dictionary
-decayed_samples_dict_nn_path: '/data/cc3m/script_tests/diclist_nn.json'
+decayed_samples_dict_nn_path: '/data/projects/data-decay/cc3m/script_tests/diclist_nn.json'
 
 # True if we want to consider the nearest decayed neighbors of the decayed samples that fulfill the conditions
 consider_nns: True
@@ -32,7 +52,7 @@ consider_nns: True
 similarity_type: 'dot_products'
 
 # Where to save the results. Make sure folder exists
-result_folder: '/data/cc3m/script_tests/results/'
+result_folder: '/data/projects/data-decay/cc3m/script_tests/results/'
 
 # Number of nearest neighbors to consider
 nearby_sample_count: 20
