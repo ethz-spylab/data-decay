@@ -27,6 +27,8 @@ For other hyperparameters, decayed_dict can be reused.
 - get_embeddings currently works for captions from CC3M caption-url format. This format can be changed by updating load_captions function in utils.py.
 To use images, simply calculate the embeddings of it using an image encoder of choice and save them as a numpy file where rows are samples and columns are the features.
 After that update the dataset_embeddings_path.
+- *DecayedConcepts* is run by calling decayed_concepts.py with config.yml file. Former simply calls other files for embedding calculation, clustering and decayed concept search, in this order.
+
 
 
 ### Interpreting results:
@@ -35,13 +37,15 @@ We would also prefer those patches to be isolated from non-decayed samples. To a
 For each patch, we report number of samples in that patch and how many of them are core or peripheral. We calculate isolation coefficient of core samples which is the on average how many neighbours of core samples are decayed. Higher this value gets, the more isolated (far away from non-decayed samples) a patch is. We also report the average cosine similarity to patch center. We also report all the captions in a patch.
 Here, we are providing an example patch report:
 
+```
 ['group 4, # captions: 518',
   '390 core decayed captions in the group, 128 peripheral decayed captions',
   'Average cosine similarity to group center: 0.816',
   'Isolation coefficient of core decayed captions: 0.89 on neighborhood sample 20',
-  '"family picnic with a dog" * 19, "happy family in the park" * 13, "the family is resting on the lawn in the city park ." * 10
+  '"family picnic with a dog" * 19, "happy family in the park" * 13, "the family is resting on the lawn in the city park ." * 10 ...
+```
 
-### TODOs auto-description of groups
+### Auto-description of groups
 For this, you will need an OpenAI account and key.
 - how to run the file (also OpenAI keys)
 - costs for CC3M. (it was about 300k tokens on gpt-3.5-turbo-0613 -> 0.45$), but to be on the conservative side, we can upper bound by like 5$, if there were 1000 groups as is the default.)
