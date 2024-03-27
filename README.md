@@ -18,10 +18,10 @@ pip install -r requirements.txt
 
 
 ### How to use *DecayedConcepts*:
-- The current method accepts CC3M caption-url format. For other formats, please update the load_captions function in utils.py.
-- Currently, decayed indices are accepted as json file. For other formats please update the relevant line in vector_search.
-- When working on a dataset, getting the embeddings is meant to be one off occasion.
-Clustering can be repeated again with different number of clusters.
+- The current method accepts CC3M caption-url format. For other formats, please update the load_captions function in *utils.py*.
+- Currently, decayed indices are accepted as json file. For other formats please update the relevant line in *find_patches.py*.
+- When working on a dataset, getting the embeddings is meant to be one off occasion. To repeat it, simply delete the embeddings file and run the program again.
+Clustering can be repeated again with different number of clusters. To do that, simply delete the current cluster files, and run the code with the new cluster_count parameter.
 Vector search, on the other hand might be repeated multiple times with different hyperparameters. But the decayed_dict re-calculation is only necessary if similarity type or nearby sample count changes.
 For other hyperparameters, decayed_dict can be reused.
 - get_embeddings currently works for captions from CC3M caption-url format. This format can be changed by updating load_captions function in utils.py.
@@ -42,13 +42,12 @@ Here, we are providing an example patch report:
   '390 core decayed captions in the group, 128 peripheral decayed captions',
   'Average cosine similarity to group center: 0.816',
   'Isolation coefficient of core decayed captions: 0.89 on neighborhood sample 20',
-  '"family picnic with a dog" * 19, "happy family in the park" * 13, "the family is resting on the lawn in the city park ." * 10 ...
+  '"family picnic with a dog" * 19, "happy family in the park" * 13, "the family is resting on the lawn in the city park ." * 10 ...]
 ```
 
-### Auto-description of groups
-For this, you will need an OpenAI account and key.
-- how to run the file (also OpenAI keys)
-- costs for CC3M. (it was about 300k tokens on gpt-3.5-turbo-0613 -> 0.45$), but to be on the conservative side, we can upper bound by like 5$, if there were 1000 groups as is the default.)
+### Auto-description of groups using gpt
+- Once the patch captions are found, gpt can be used to automatically generate concepts, yet it requires significant prompt-tuning. This can be done in *gpt_concept_generation.py*. For this, you will need an OpenAI account and key. It currently prints 3 concepts for each patch, and also saves them in the *generated_captions.json* file.
+- We have used gpt-3.5-turbo-0613 and for 300k tokens the cost was 0.45$.
 
 ## License
 [MIT](https://choosealicense.com/licenses/mit/)
