@@ -16,7 +16,6 @@ conda activate decayedvenv
 pip install -r requirements.txt
 ```
 
-
 ### How to use *DecayedConcepts*:
 - The current method accepts CC3M caption-url format. For other formats, please update the load_captions function in *utils.py*.
 - Currently, decayed indices are accepted as json file. For other formats please update the relevant line in *find_patches.py*.
@@ -27,7 +26,16 @@ For other hyperparameters, decayed_dict can be reused.
 - get_embeddings currently works for captions from CC3M caption-url format. This format can be changed by updating load_captions function in utils.py.
 To use images, simply calculate the embeddings of it using an image encoder of choice and save them as a numpy file where rows are samples and columns are the features.
 After that update the dataset_embeddings_path.
-- *DecayedConcepts* is run by calling decayed_concepts.py with config.yml file. Former simply calls other files for embedding calculation, clustering and decayed concept search, in this order.
+- *DecayedConcepts* is run by calling decayed_concepts.py with config.yml file. 
+```
+python decayed_concepts.py config.yml
+```
+This is equivalent to 
+```
+python get_embeddings.py config.yml
+python get_clusters.py config.yml
+python find_patches.py config.yml
+```
 
 
 
@@ -50,4 +58,24 @@ Here, we are providing an example patch report:
 - We have used gpt-3.5-turbo-0613 and for 300k tokens the cost was 0.45$.
 
 ## License
-[MIT](https://choosealicense.com/licenses/mit/)
+MIT License
+
+Copyright (c) 2024 Ozgur Celik
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
