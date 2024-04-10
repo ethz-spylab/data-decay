@@ -13,7 +13,6 @@
 ## Requirements
 
 To set up the environment for DecayedConcepts, run:
-
 ```bash
 pip install -r requirements.txt
 ```
@@ -25,13 +24,14 @@ pip install -r requirements.txt
 3. Run `decayed_concepts.py` with the `config.yml` file to perform embedding calculation, clustering, and decayed concept search.
 
 ```bash
-python decayed_concepts.py config.yml
+python decayed_concepts.py --verbose True --captions_urls_path "CAPTIONS_URLS.tsv" --model_name "openai/clip-vit-large-patch14" --cuda_device 7 --step_size 1000 --dataset_embeddings_path "TEXT_EMBEDDINGS.npy" --cluster_count 100 --clusters_folder "CLUSTERS_FOLDER" --use_torch_kmeans True --decayed_indices_path "DECAYED_INDICES_PATH" --decayed_dict_calculate True --decayed_samples_dict_nn_path "DECAYED_SAMPLES_DICT_NN_PATH" --consider_nns True --similarity_type 'dot_products' --result_folder "RESULTS_FOLDER" --nearby_sample_count 20 --nearby_decayed_sample_count_threshold 12 --closest_clusters_count 0 --closest_cluster_check_threshold 2 --check_similarity True --lower_similarity_threshold 0.8 --group_similartity_threshold 0.8 --group_element_threshold 0
 ```
+
 This is equivalent to 
 ```bash
-python get_embeddings.py config.yml
-python get_clusters.py config.yml
-python find_patches.py config.yml
+python get_embeddings.py  [args]
+python get_clusters.py  [args]
+python find_patches.py  [args]
 ```
 
 Note:
