@@ -12,7 +12,7 @@ import os
 
 from transformers import CLIPProcessor, CLIPModel
 
-from utils import load_captions
+from utils import load_captions, load_yaml_munch
 
 def main(args):
 
@@ -57,13 +57,15 @@ def main(args):
     print("completed saving embeddings")
 
 
+DEFAULT_CONFIG = load_yaml_munch("config.yml")
+
 if __name__ == "__main__":
     p = argparse.ArgumentParser()
     p.add_argument("--verbose", type=bool, default=True, help="Whether to print verbose output")
-    p.add_argument("--captions_urls_path", type=str, required=True, help="Location of the captions and urls")
-    p.add_argument("--model_name", type=str, required=True, help="Model to use for the embeddings")
-    p.add_argument("--cuda_device", type=int, required=True, help="Cuda device to use")
-    p.add_argument("--step_size", type=int, required=True, help="Step size for calculating embeddings")
-    p.add_argument("--dataset_embeddings_path", type=str, required=True, help="Dataset embedding location")
+    p.add_argument("--cuda_device", type=int, default=0, help="Cuda device to use")
+    p.add_argument("--captions_urls_path", type=str, default=DEFAULT_CONFIG.captions_urls_path, help="Location of the captions and urls")
+    p.add_argument("--model_name", type=str, default=DEFAULT_CONFIG.model_name, help="Model to use for the embeddings")
+    p.add_argument("--step_size", type=int, default=DEFAULT_CONFIG.step_size, help="Step size for calculating embeddings")
+    p.add_argument("--dataset_embeddings_path", type=str, default=DEFAULT_CONFIG.dataset_embeddings_path, help="Dataset embedding location")
     args = p.parse_args()
     main(args)

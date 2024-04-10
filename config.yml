@@ -1,49 +1,34 @@
-# this is the main yaml
 # TODO: write in the readme that if the user wants to regenerate something, just delete the embeddings / clusters / dictlist_nn.json files and run the script again
-# otherwise, the script will use the existing files, it will get much faster after the first run
+# otherwise, the script will use the existing files, it will get much faster after the first runv
 
-# Whether to print landmark actions and results
-verbose: True
-
-# Location of the captions and urls (for CC3M format. For other formats, please modify the load_captions in utils.py)
-captions_urls_path: "/data/projects/data-decay/cc3m/cc3m_2023/captions/Train_GCC-training.tsv"
+captions_urls_path: "/data/projects/data-decay-repr/captions/Train_GCC-training.tsv"
 
 # Model to use for the embeddings
 model_name: "openai/clip-vit-large-patch14"
-
-# Cuda device to use
-cuda_device: 7
 
 # Step size for calculating embeddings
 step_size: 1000
 
 # Dataset embedding location
-dataset_embeddings_path: "/data/projects/data-decay/cc3m/cc3m_2023/embeddings2/text_embeddings_L14.npy"
+dataset_embeddings_path: "/data/projects/data-decay-repr/embeddings2/text_embeddings_L14.npy"
 
 # # of clusters to create
 cluster_count: 100
 
 # Clusters save folder
-clusters_folder: "/data/projects/data-decay/cc3m/cc3m_2023/clusters/"
+clusters_folder: "/data/projects/data-decay-repr/clusters/"
 
 # Use torch kmeans instead of sklearn kmeans
 use_torch_kmeans: True
 
-
-
-
-
-
-
 # Location of decayed indices
-#decayed_indices_path: '/data/projects/data-decay/cc3m/decayed_indices.json'
-decayed_indices_path: '/data/projects/data-decay/cc3m/script_tests/decayed_indices/combined_decayed_indices.txt'
+decayed_indices_path: "/data/projects/data-decay-repr/combined_decayed_indices.txt"
 
 # Only need to recalculate decayed samples dictionary if decayed indices or the nearby_sample_count are updated 
 decayed_dict_calculate: True
 
 # Location of decayed samples dictionary
-decayed_samples_dict_nn_path: '/data/projects/data-decay/cc3m/script_tests/diclist_nn.json'
+decayed_samples_dict_nn_path: "/data/projects/data-decay-repr/diclist_nn.json"
 
 # True if we want to consider the peripheral samples
 consider_nns: True
@@ -52,7 +37,7 @@ consider_nns: True
 similarity_type: 'dot_products'
 
 # Where to save the results. Make sure folder exists
-result_folder: '/data/projects/data-decay/cc3m/script_tests/results/'
+result_folder: "/data/projects/data-decay-repr/results/"
 
 # Number of nearest neighbors to consider
 nearby_sample_count: 20
@@ -64,16 +49,14 @@ nearby_decayed_sample_count_threshold: 12
 closest_clusters_count: 0
 
 # Checking other clusters for all decayed samples might be costly. We can limit the number of decayed samples to check
-# If nearby_decayed_sample_count_threshold is 12 and closest_cluster_check_threshold is 2, then we will check the samples with at least 10 decayed neighbors
-# in the cluster they are initially assigned to
 closest_cluster_check_threshold: 2
 
 # Whether to check if the nearby_decayed_sample_count_threshold decayed neighbour has at least lower_similarity_threshold similarity to the decayed sample
 check_similarity: True
 lower_similarity_threshold: 0.8
 
-# Combine clusters if their centroids have at least cluster_similartity_threshold similarity
-group_similartity_threshold: 0.8
+# Combine clusters if their centroids have at least cluster_similarity_threshold similarity
+group_similarity_threshold: 0.8
 
 # How many decayed samples should be in a cluster to consider it (including the decayed neighbours if consider_nns is True)
 group_element_threshold: 0

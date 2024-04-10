@@ -3,7 +3,7 @@ import os
 import argparse
 
 from sklearn.cluster import KMeans, MiniBatchKMeans
-from utils import dot_products_distances
+from utils import dot_products_distances, load_yaml_munch
 
 def main(args):
     os.environ['OPENBLAS_NUM_THREADS'] = '1'
@@ -45,13 +45,14 @@ def main(args):
     np.save(dot_products_path, dot_products)
     np.save(distances_path, distances)
 
+DEFAULT_CONFIG = load_yaml_munch("config.yml")
 if __name__ == "__main__":
     p = argparse.ArgumentParser()
-    p.add_argument("--dataset_embeddings_path", type=str, required=True, help="Dataset embedding location")
-    p.add_argument("--clusters_folder", type=str, required=True, help="Clusters save folder")
-    p.add_argument("--cluster_count", type=int, required=True, help="# of clusters to create")
-    p.add_argument("--use_torch_kmeans", type=bool, default=False, help="Use torch kmeans instead of sklearn kmeans")
-    p.add_argument("--cuda_device", type=int, required=True, help="CUDA device to use")
-    p.add_argument("--verbose", type=bool, default=False, help="Whether to print verbose output")
+    p.add_argument("--verbose", type=bool, default=True, help="Whether to print verbose output")
+    p.add_argument("--cuda_device", type=int, default=0, help="CUDA device to use")
+    p.add_argument("--dataset_embeddings_path", type=str, default=DEFAULT_CONFIG.dataset_embeddings_path, help="Dataset embedding location")
+    p.add_argument("--clusters_folder", type=str, default=DEFAULT_CONFIG.clusters_folder, help="Clusters save folder")
+    p.add_argument("--cluster_count", type=int, default=DEFAULT_CONFIG.cluster_count, help="# of clusters to create")
+    p.add_argument("--use_torch_kmeans", type=bool, default=DEFAULT_CONFIG.use_torch_kmeans, help="Use torch kmeans instead of sklearn kmeans")
     args = p.parse_args()
     main(args)

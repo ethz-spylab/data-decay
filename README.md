@@ -21,10 +21,20 @@ pip install -r requirements.txt
 
 1. Prepare your dataset in the CC3M caption-url format. For other formats, update the `load_captions` function in `utils.py`.
 2. Provide the decayed indices as a JSON file. For other formats, update the relevant line in `find_patches.py`.
-3. Run `decayed_concepts.py` with the `config.yml` file to perform embedding calculation, clustering, and decayed concept search.
+3. Run `decayed_concepts.py` to perform embedding calculation, clustering, and decayed concept search.
 
 ```bash
-python decayed_concepts.py --verbose True --captions_urls_path "CAPTIONS_URLS.tsv" --model_name "openai/clip-vit-large-patch14" --cuda_device 7 --step_size 1000 --dataset_embeddings_path "TEXT_EMBEDDINGS.npy" --cluster_count 100 --clusters_folder "CLUSTERS_FOLDER" --use_torch_kmeans True --decayed_indices_path "DECAYED_INDICES_PATH" --decayed_dict_calculate True --decayed_samples_dict_nn_path "DECAYED_SAMPLES_DICT_NN_PATH" --consider_nns True --similarity_type 'dot_products' --result_folder "RESULTS_FOLDER" --nearby_sample_count 20 --nearby_decayed_sample_count_threshold 12 --closest_clusters_count 0 --closest_cluster_check_threshold 2 --check_similarity True --lower_similarity_threshold 0.8 --group_similartity_threshold 0.8 --group_element_threshold 0
+python decayed_concepts.py \
+    --captions_urls_path CAPTIONS_URLS.tsv \
+    --model_name openai/clip-vit-large-patch14 \
+    --dataset_embeddings_path TEXT_EMBEDDINGS.npy \
+    --clusters_folder CLUSTERS_FOLDER \
+    --decayed_indices_path DECAYED_INDICES_PATH \
+    --decayed_samples_dict_nn_path DECAYED_SAMPLES_DICT_NN_PATH \
+    --result_folder RESULTS_FOLDER \
+    --verbose True \
+    --cuda_device 0
+    # -- any other parameters in the config.yml file, if you want to modify them
 ```
 
 This is equivalent to 
@@ -33,6 +43,9 @@ python get_embeddings.py  [args]
 python get_clusters.py  [args]
 python find_patches.py  [args]
 ```
+
+TODO we attach the `DECATED_INDICES_PATH` and `DECAYED_SAMPLES_DICT_NN_PATH` files for the CC3M dataset (as of 2023) in a zip file as a Github release in this repo.
+
 
 Note:
 - Embedding calculation is a one-time process. To repeat it, delete the embeddings file and run the program again.
