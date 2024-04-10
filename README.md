@@ -12,11 +12,9 @@
 
 ## Requirements
 
-To set up the environment for DecayedConcepts, follow these steps:
+To set up the environment for DecayedConcepts, run:
 
 ```bash
-conda create -n decayedvenv python=3.9
-conda activate decayedvenv
 pip install -r requirements.txt
 ```
 
