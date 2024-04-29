@@ -27,7 +27,7 @@ def main(args):
     if args.use_torch_kmeans:
         from kmean_torch import kmeans_core
         print("Starting torch k-means")
-        km = kmeans_core(k=args.cluster_count, data_array=embeddings, batch_size=256 * 16, epochs=1, all_cuda=True, verbose=args.verbose)
+        km = kmeans_core(k=args.cluster_count, data_array=embeddings, batch_size=256 * 16, epochs=10, all_cuda=True, verbose=args.verbose)
         km.run()
         cluster_centers = km.cent.cpu().numpy()
     else:

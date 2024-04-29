@@ -16,13 +16,14 @@ dataset_embeddings_path: "/data/projects/data-decay-repr/embeddings2/text_embedd
 cluster_count: 100
 
 # Clusters save folder
-clusters_folder: "/data/projects/data-decay-repr/clusters/"
+#clusters_folder: "/data/projects/data-decay-repr/clusters/"
+clusters_folder: /data/projects/data-decay/cc3m/script_tests/clusters/
 
 # Use torch kmeans instead of sklearn kmeans
 use_torch_kmeans: True
 
 # Location of decayed indices
-decayed_indices_path: "/data/projects/data-decay-repr/combined_decayed_indices.txt"
+decayed_indices_path: "/data/projects/data-decay-repr/cc3m_decayed_indices.txt"
 
 # Only need to recalculate decayed samples dictionary if decayed indices or the nearby_sample_count are updated 
 decayed_dict_calculate: True

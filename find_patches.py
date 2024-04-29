@@ -416,8 +416,6 @@ if __name__ == "__main__":
     p = argparse.ArgumentParser()
     p.add_argument("--verbose", type=bool, default=True, help="Whether to print landmark actions and results")
     p.add_argument("--cuda_device", type=int, default=0, help="Cuda device to use")
-    p.add_argument("--verbose", type=bool, default=DEFAULT_CONFIG.verbose, help="Whether to print landmark actions and results")
-    p.add_argument("--cuda_device", type=int, default=DEFAULT_CONFIG.cuda_device, help="Cuda device to use")
     p.add_argument("--captions_urls_path", type=str, default=DEFAULT_CONFIG.captions_urls_path, help="Location of the captions and urls")
     p.add_argument("--model_name", type=str, default=DEFAULT_CONFIG.model_name, help="Model to use for the embeddings")
     p.add_argument("--step_size", type=int, default=DEFAULT_CONFIG.step_size, help="Step size for calculating embeddings")

@@ -44,7 +44,7 @@ python get_clusters.py  [args]
 python find_patches.py  [args]
 ```
 
-TODO we attach the `DECATED_INDICES_PATH` and `DECAYED_SAMPLES_DICT_NN_PATH` files for the CC3M dataset (as of 2023) in a zip file as a Github release in this repo.
+We attach the `DECAYED_INDICES_PATH` and `DECAYED_SAMPLES_DICT_NN_PATH` files for the CC3M dataset (as of 2023) in a zip file as a Github release in this repo.
 
 
 Note:
